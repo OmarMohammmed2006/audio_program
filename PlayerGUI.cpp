@@ -3,7 +3,7 @@
 PlayerGUI::PlayerGUI()
 {
 	// Add buttons
-	for (auto* btn : { &loadButton, &restartButton , &pauseButton, &playButton })
+	for (auto* btn : { &loadButton, &restartButton , &pauseButton, &playButton, &gotostartbutton, &gotoendbutton })
 	{
 		addAndMakeVisible(btn);
 		btn->addListener(this);
@@ -32,12 +32,31 @@ void PlayerGUI::releaseResources()
 
 void PlayerGUI::resized()
 {
-    int y = 20;
-    loadButton.setBounds(20, y, 100, 40);
-    restartButton.setBounds(140, y, 80, 40);
-    pauseButton.setBounds(240, y, 80, 40);
-    playButton.setBounds(340, y, 80, 40);
-    volumeSlider.setBounds(20, y+60, getWidth() - 40, 30);
+    const int fixed = 10;
+    const int buttonWidth = 80;
+    const int buttonHeight = 40;
+    const int spacing = 10;
+    const int y = fixed;
+    int x = fixed;
+
+    loadButton.setBounds(x, y, buttonWidth+20, buttonHeight);
+    x += buttonWidth+20 + spacing;
+
+    restartButton.setBounds(x, y, buttonWidth, buttonHeight);
+    x += buttonWidth + spacing;
+    
+    pauseButton.setBounds(x, y, buttonWidth, buttonHeight);
+    x += buttonWidth + spacing;
+    
+    playButton.setBounds(x, y, buttonWidth, buttonHeight);
+    x += buttonWidth + spacing;
+    
+    gotostartbutton.setBounds(x, y, buttonWidth+10, buttonHeight);
+    x += buttonWidth+10 + spacing;
+    
+    gotoendbutton.setBounds(x, y, buttonWidth, buttonHeight);
+
+    volumeSlider.setBounds(fixed, 90, getWidth() - 40, 30);
 }
 
 void PlayerGUI::buttonClicked(juce::Button* button)
@@ -72,6 +91,21 @@ void PlayerGUI::buttonClicked(juce::Button* button)
     if (button == &playButton)
     {
         playerAudio.play();
+    }
+
+    if (button == &gotostartbutton)
+    {
+        playerAudio.setPosition(0.0);
+	}
+
+    if (button == &gotoendbutton)
+    {
+        double length = playerAudio.getLength();
+        if (length > 0.0)
+        {
+            playerAudio.setPosition(length);
+            playerAudio.pause();
+        }
     }
 
 }
