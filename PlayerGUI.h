@@ -19,18 +19,18 @@ public:
 private:
 	PlayerAudio playerAudio;
 
-	// GUI elements
 	juce::TextButton loadButton{ "Load Files" };
 	juce::TextButton restartButton{ "Restart" };
 	juce::TextButton pauseButton{ "Pause" };
 	juce::TextButton playButton{ "Play" };
 	juce::TextButton gotostartbutton{ "Go To Start" };
 	juce::TextButton gotoendbutton{ "Go To End" };
+	juce::TextButton mute_button{ "Mute" };
 	juce::Slider volumeSlider;
+	juce::Slider speedSlider;
+
 
 	std::unique_ptr<juce::FileChooser> fileChooser;
-
-	// Event handlers
 	void buttonClicked(juce::Button* button) override;
 	void sliderValueChanged(juce::Slider* slider) override;
 

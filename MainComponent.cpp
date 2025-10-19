@@ -3,8 +3,8 @@
 MainComponent::MainComponent()
 {
     addAndMakeVisible(player1);
-	setSize(1000, 600);
-	setAudioChannels(0, 2);
+    setSize(1000, 600);
+    setAudioChannels(0, 2);
 }
 
 MainComponent::~MainComponent()
@@ -30,7 +30,7 @@ void MainComponent::releaseResources()
 
 void MainComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colours::darkgrey);
+    g.fillAll(juce::Colours::brown);
 }
 
 void MainComponent::resized()

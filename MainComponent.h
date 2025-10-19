@@ -8,11 +8,11 @@ class MainComponent : public juce::AudioAppComponent
 public:
     MainComponent();
     ~MainComponent() override;
-    
+
     void prepareToPlay(int samplesPerBlockExpected, double sampleRate);
     void getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill);
     void releaseResources() override;
-	void paint(juce::Graphics& g) override;
+    void paint(juce::Graphics& g) override;
     void resized() override;
 
 private:

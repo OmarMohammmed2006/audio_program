@@ -26,15 +26,12 @@ bool PlayerAudio::loadfile(const juce::File& file)
     {
         if (auto* reader = formatManager.createReaderFor(file))
         {
-            // ?? Disconnect old source first
             transportSource.stop();
             transportSource.setSource(nullptr);
             readerSource.reset();
 
-            // Create new reader source
             readerSource = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
 
-            // Attach safely
             transportSource.setSource(readerSource.get(),
                 0,
                 nullptr,
@@ -63,9 +60,25 @@ void PlayerAudio::play()
     transportSource.start();
 }
 
+void PlayerAudio::mute() {
+    isMuted = !isMuted;
+    if (isMuted) {
+        previousVolume = currentGain;
+        setGain(0.0f);
+    } else {
+        setGain(previousVolume);
+    }
+}
+
+
 void PlayerAudio::setGain(float gain)
 {
     transportSource.setGain(gain);
+    currentGain = gain;
+
+    if (isMuted && gain > 0.0f) {
+        isMuted = false;
+    }
 }
 
 void PlayerAudio::setPosition(double pos)
