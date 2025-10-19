@@ -3,8 +3,8 @@
 #include "PlayerAudio.h"
 
 class PlayerGUI : public juce::Component,
-                  public juce::Button::Listener,
-                  public juce::Slider::Listener
+	public juce::Button::Listener,
+	public juce::Slider::Listener
 {
 public:
 	PlayerGUI();
@@ -26,6 +26,7 @@ private:
 	juce::TextButton gotostartbutton{ "Go To Start" };
 	juce::TextButton gotoendbutton{ "Go To End" };
 	juce::TextButton mute_button{ "Mute" };
+	juce::TextButton loopbutton{ "Loop: off" };
 	juce::Slider volumeSlider;
 	juce::Slider speedSlider;
 

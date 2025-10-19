@@ -1,4 +1,4 @@
-#include "audio_program/PlayerAudio.h"
+#include "PlayerAudio.h"
 
 PlayerAudio::PlayerAudio()
 {
@@ -94,4 +94,10 @@ double PlayerAudio::getPosition() const
 double PlayerAudio::getLength() const
 {
     return transportSource.getLengthInSeconds();
+}
+
+void PlayerAudio::setlooping(bool shouldloop)
+{
+    isloopingenabled = shouldloop;
+    if (readerSource) readerSource->setLooping(shouldloop);
 }

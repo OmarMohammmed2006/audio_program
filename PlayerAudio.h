@@ -15,6 +15,8 @@ public:
 	void pause();
 	void play();
 	void mute();
+	void setlooping(bool shouldloop);
+	bool islooping() const {return isloopingenabled;}
 	void setSpeed();
 
 	void setGain(float gain);
@@ -33,6 +35,7 @@ private:
 	bool isMuted = false;
 	float currentSpeed = 1.0f;
 	float currentGain = 0.5f;
+	bool isloopingenabled = false;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerAudio)
 };

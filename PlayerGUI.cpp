@@ -1,8 +1,8 @@
-#include "audio_program/PlayerGUI.h"
+#include "PlayerGUI.h"
 
 PlayerGUI::PlayerGUI()
 {
-	for (auto* btn : { &loadButton, &restartButton , &pauseButton, &playButton, &gotostartbutton, &gotoendbutton, &mute_button})
+	for (auto* btn : { &loadButton, &restartButton , &pauseButton, &playButton, &gotostartbutton, &gotoendbutton, &mute_button,&loopbutton})
 	{
 		addAndMakeVisible(btn);
 		btn->addListener(this);
@@ -60,6 +60,8 @@ void PlayerGUI::resized()
     x += buttonWidth + spacing;
 
     mute_button.setBounds(x, y, buttonWidth, buttonHeight);
+
+    loopbutton.setBounds(x, y, buttonWidth, buttonHeight);
 
     volumeSlider.setBounds(fixed, 90, getWidth() - 40, 30);
     speedSlider.setBounds(fixed, 130, getWidth() - 40, 30);
@@ -123,6 +125,19 @@ void PlayerGUI::buttonClicked(juce::Button* button)
         } else {
             mute_button.setButtonText("Mute");
             volumeSlider.setValue(playerAudio.getPreviousVolume());
+        }
+    }
+    if (button == &loopbutton)
+    {
+        bool currentlylooping = playerAudio.islooping();
+        playerAudio.setlooping(!currentlylooping);
+        if (currentlylooping)
+        {
+            loopbutton.setButtonText("Loop: Off");
+        }
+        else
+        {
+            loopbutton.setButtonText("Loop: On");
         }
     }
 
