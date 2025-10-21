@@ -30,7 +30,7 @@ void MainComponent::releaseResources()
 
 void MainComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colours::brown);
+    g.fillAll(juce::Colours::darkblue);
 }
 
 void MainComponent::resized()

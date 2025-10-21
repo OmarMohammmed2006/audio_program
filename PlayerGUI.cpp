@@ -60,6 +60,7 @@ void PlayerGUI::resized()
     x += buttonWidth + spacing;
 
     mute_button.setBounds(x, y, buttonWidth, buttonHeight);
+    x += buttonWidth + spacing;
 
     loopbutton.setBounds(x, y, buttonWidth, buttonHeight);
 
