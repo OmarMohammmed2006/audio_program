@@ -13,7 +13,6 @@ public:
 	bool loadfile(const juce::File& file);
 	void start();
 	void pause();
-	void play();
 	void mute();
 	void setlooping(bool shouldloop);
 	bool islooping() const {return isloopingenabled;}
@@ -22,6 +21,7 @@ public:
 	void setGain(float gain);
 	float getGain() { return currentGain; }
 	bool getMuteState() { return isMuted; }
+	bool getPauseState() { return isPlaying; }
 	float getPreviousVolume() const { return previousVolume; }
 	void setPosition(double pos);
 	double getPosition() const;
@@ -33,6 +33,7 @@ private:
 
 	float previousVolume = 0.5f;
 	bool isMuted = false;
+	bool isPlaying = false;
 	float currentSpeed = 1.0f;
 	float currentGain = 0.5f;
 	bool isloopingenabled = false;

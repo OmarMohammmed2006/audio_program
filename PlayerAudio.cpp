@@ -50,14 +50,17 @@ void PlayerAudio::start()
 
 void PlayerAudio::pause()
 {
-    transportSource.stop();
-	transportSource.setPosition(transportSource.getCurrentPosition());
-}
-
-void PlayerAudio::play()
-{
-    transportSource.setPosition(transportSource.getCurrentPosition());
-    transportSource.start();
+	isPlaying = !isPlaying;
+    if (isPlaying) {
+        transportSource.stop();
+        transportSource.setPosition(transportSource.getCurrentPosition());
+    }
+    else
+    {
+        transportSource.setPosition(transportSource.getCurrentPosition());
+        transportSource.start();
+    }
+    
 }
 
 void PlayerAudio::mute() {
