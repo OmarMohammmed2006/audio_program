@@ -2,7 +2,7 @@
 
 PlayerGUI::PlayerGUI()
 {
-	for (auto* btn : { &loadButton, &restartButton , &playpauseButton, &gotostartbutton, &gotoendbutton, &mute_button,&loopbutton})
+	for (auto* btn : { &loadButton, &restartButton , &playpauseButton, &gotostartbutton, &gotoendbutton, &mute_button, &loopbutton})
 	{
 		addAndMakeVisible(btn);
 		btn->addListener(this);
@@ -15,6 +15,10 @@ PlayerGUI::PlayerGUI()
     speedSlider.setValue(1.0);
     speedSlider.addListener(this);
     addAndMakeVisible(speedSlider);
+
+    metadataLabel.setText("No file loaded", juce::dontSendNotification);
+    metadataLabel.setJustificationType(juce::Justification::left);
+    addAndMakeVisible(metadataLabel);
 }
 
 PlayerGUI::~PlayerGUI() {}
@@ -63,6 +67,7 @@ void PlayerGUI::resized()
 
     volumeSlider.setBounds(fixed, 90, getWidth() - 40, 30);
     speedSlider.setBounds(fixed, 130, getWidth() - 40, 30);
+    metadataLabel.setBounds(fixed, 170, getWidth() - 40, 100);
 
 }
 
@@ -80,7 +85,11 @@ void PlayerGUI::buttonClicked(juce::Button* button)
             [this](const juce::FileChooser& fc)
             {
                 auto file = fc.getResult();
-                playerAudio.loadfile(file);
+                juce::String metadata;
+                if (playerAudio.loadfile(file, metadata))
+                {
+                    updateMetadataDisplay(metadata);
+                }
             });
     }
 
@@ -147,4 +156,9 @@ void PlayerGUI::sliderValueChanged(juce::Slider* slider)
     {
         playerAudio.setGain(static_cast<float>(volumeSlider.getValue()));
     }
+}
+
+void PlayerGUI::updateMetadataDisplay(const juce::String& metadata)
+{
+    metadataLabel.setText(metadata, juce::dontSendNotification);
 }

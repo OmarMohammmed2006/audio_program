@@ -16,6 +16,8 @@ public:
 	void getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill);
 	void releaseResources();
 
+	void updateMetadataDisplay(const juce::String& metadata);
+
 private:
 	PlayerAudio playerAudio;
 
@@ -28,6 +30,7 @@ private:
 	juce::TextButton loopbutton{ "Loop: off" };
 	juce::Slider volumeSlider;
 	juce::Slider speedSlider;
+	juce::Label metadataLabel;
 
 
 	std::unique_ptr<juce::FileChooser> fileChooser;

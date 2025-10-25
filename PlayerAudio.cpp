@@ -20,7 +20,7 @@ void PlayerAudio::releaseResources()
 {
 	transportSource.releaseResources();
 }
-bool PlayerAudio::loadfile(const juce::File& file)
+bool PlayerAudio::loadfile(const juce::File& file, juce::String& metadata)
 {
     if (file.existsAsFile())
     {
@@ -29,19 +29,45 @@ bool PlayerAudio::loadfile(const juce::File& file)
             transportSource.stop();
             transportSource.setSource(nullptr);
             readerSource.reset();
-
             readerSource = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
 
-            transportSource.setSource(readerSource.get(),
-                0,
-                nullptr,
-                reader->sampleRate);
+            transportSource.setSource(readerSource.get(), 0, nullptr, reader->sampleRate);
+
+            juce::StringArray metadataLines;
+            auto metadataValues = reader->metadataValues;
+            static const juce::String emptyString;
+
+            if (metadataValues.size() == 0)
+            {
+                metadata = "Filename: " + file.getFileName();
+            }
+            else
+            {
+                // Use juce::String instead of const juce::String*
+                const juce::String title = metadataValues.getValue("title", emptyString);
+                if (!title.isEmpty())
+                    metadataLines.add("Title: " + title);
+
+                const juce::String artist = metadataValues.getValue("artist", emptyString);
+                if (!artist.isEmpty())
+                    metadataLines.add("Artist: " + artist);
+
+                const juce::String album = metadataValues.getValue("album", emptyString);
+                if (!album.isEmpty())
+                    metadataLines.add("Album: " + album);
+
+                metadataLines.add("Duration: " + juce::String(transportSource.getLengthInSeconds()) + " seconds");
+                metadata = metadataLines.joinIntoString("\n");
+            }
+
             transportSource.start();
-			return true;
+            return true;
         }
-		return false;
+        metadata = "Error: Could not read file";
+        return false;
     }
-	return false;
+    metadata = "Error: File does not exist";
+    return false;
 }
 void PlayerAudio::start()
 {
