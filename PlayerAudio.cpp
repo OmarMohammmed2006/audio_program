@@ -1,32 +1,25 @@
 #include "PlayerAudio.h"
 
-PlayerAudio::PlayerAudio() : resamplerSource(&transportSource, false)
+PlayerAudio::PlayerAudio()
 {
-    formatManager.registerBasicFormats();
+	formatManager.registerBasicFormats();
 }
-
 PlayerAudio::~PlayerAudio()
 {
-    transportSource.setSource(nullptr);
+	transportSource.setSource(nullptr);
 }
-
 void PlayerAudio::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
 {
-    transportSource.prepareToPlay(samplesPerBlockExpected, sampleRate);
-    resamplerSource.prepareToPlay(samplesPerBlockExpected, sampleRate);
+	transportSource.prepareToPlay(samplesPerBlockExpected, sampleRate);
 }
-
 void PlayerAudio::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill)
 {
-    resamplerSource.getNextAudioBlock(bufferToFill);
+	transportSource.getNextAudioBlock(bufferToFill);
 }
-
 void PlayerAudio::releaseResources()
 {
-    resamplerSource.releaseResources();
-    transportSource.releaseResources();
+	transportSource.releaseResources();
 }
-
 bool PlayerAudio::loadfile(const juce::File& file, juce::String& metadata)
 {
     if (file.existsAsFile())
@@ -36,27 +29,38 @@ bool PlayerAudio::loadfile(const juce::File& file, juce::String& metadata)
             transportSource.stop();
             transportSource.setSource(nullptr);
             readerSource.reset();
-
             readerSource = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
+
             transportSource.setSource(readerSource.get(), 0, nullptr, reader->sampleRate);
-            setSpeed(1.0f);
 
             juce::StringArray metadataLines;
-            auto& metadataValues = reader->metadataValues;
-
-            metadataLines.add("File: " + file.getFileName());
-            metadataLines.add("Duration: " + juce::String(transportSource.getLengthInSeconds(), 1) + " seconds");
-
+            auto metadataValues = reader->metadataValues;
             static const juce::String emptyString;
-            const juce::String title = metadataValues.getValue("title", emptyString);
-            const juce::String artist = metadataValues.getValue("artist", emptyString);
-            const juce::String album = metadataValues.getValue("album", emptyString);
 
-            if (!title.isEmpty()) metadataLines.add("Title: " + title);
-            if (!artist.isEmpty()) metadataLines.add("Artist: " + artist);
-            if (!album.isEmpty()) metadataLines.add("Album: " + album);
+            if (metadataValues.size() == 0)
+            {
+                metadata = "Filename: " + file.getFileName();
+            }
+            else
+            {
+                // Use juce::String instead of const juce::String*
+                const juce::String title = metadataValues.getValue("title", emptyString);
+                if (!title.isEmpty())
+                    metadataLines.add("Title: " + title);
 
-            metadata = metadataLines.joinIntoString("\n");
+                const juce::String artist = metadataValues.getValue("artist", emptyString);
+                if (!artist.isEmpty())
+                    metadataLines.add("Artist: " + artist);
+
+                const juce::String album = metadataValues.getValue("album", emptyString);
+                if (!album.isEmpty())
+                    metadataLines.add("Album: " + album);
+
+                metadataLines.add("Duration: " + juce::String(transportSource.getLengthInSeconds()) + " seconds");
+                metadata = metadataLines.joinIntoString("\n");
+            }
+
+            transportSource.start();
             return true;
         }
         metadata = "Error: Could not read file";
@@ -65,15 +69,24 @@ bool PlayerAudio::loadfile(const juce::File& file, juce::String& metadata)
     metadata = "Error: File does not exist";
     return false;
 }
-
-void PlayerAudio::play()
+void PlayerAudio::start()
 {
     transportSource.start();
 }
 
 void PlayerAudio::pause()
 {
-    transportSource.stop();
+	isPlaying = !isPlaying;
+    if (isPlaying) {
+        transportSource.stop();
+        transportSource.setPosition(transportSource.getCurrentPosition());
+    }
+    else
+    {
+        transportSource.setPosition(transportSource.getCurrentPosition());
+        transportSource.start();
+    }
+    
 }
 
 void PlayerAudio::mute() {
@@ -85,6 +98,7 @@ void PlayerAudio::mute() {
         setGain(previousVolume);
     }
 }
+
 
 void PlayerAudio::setGain(float gain)
 {
@@ -115,15 +129,4 @@ void PlayerAudio::setlooping(bool shouldloop)
 {
     isloopingenabled = shouldloop;
     if (readerSource) readerSource->setLooping(shouldloop);
-}
-
-void PlayerAudio::setSpeed(float newSpeed) {
-    newSpeed = juce::jlimit(0.25f, 4.0f, newSpeed);
-
-    if (currentSpeed != newSpeed)
-    {
-        currentSpeed = newSpeed;
-        double resamplingRatio = currentSpeed;
-        resamplerSource.setResamplingRatio(resamplingRatio);
-    }
 }
