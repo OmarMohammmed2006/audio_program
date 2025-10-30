@@ -14,10 +14,10 @@ public:
 	void start();
 	void pause();
 	void play();
+	bool isPlaying() const { return transportSource.isPlaying(); }
 	void mute();
 	void setlooping(bool shouldloop);
 	bool islooping() const {return isloopingenabled;}
-	void setSpeed();
 
 	void setGain(float gain);
 	float getGain() { return currentGain; }
@@ -26,16 +26,26 @@ public:
 	void setPosition(double pos);
 	double getPosition() const;
 	double getLength() const;
+
+	void setSpeed(float newSpeed);
+	float getSpeed() const { return currentSpeed; }
+
+	void setShouldPlay(bool play) { shouldPlay = play; }
+	bool getShouldPlay() const { return shouldPlay; }
+
 private:
 	juce::AudioFormatManager formatManager;
 	std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
 	juce::AudioTransportSource transportSource;
+	juce::ResamplingAudioSource resamplerSource;
 
 	float previousVolume = 0.5f;
 	bool isMuted = false;
 	float currentSpeed = 1.0f;
 	float currentGain = 0.5f;
 	bool isloopingenabled = false;
+
+	bool shouldPlay = true;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerAudio)
 };

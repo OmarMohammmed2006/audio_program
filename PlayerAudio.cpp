@@ -1,6 +1,6 @@
 #include "PlayerAudio.h"
 
-PlayerAudio::PlayerAudio()
+PlayerAudio::PlayerAudio() : resamplerSource(&transportSource, false)
 {
 	formatManager.registerBasicFormats();
 }
@@ -10,15 +10,21 @@ PlayerAudio::~PlayerAudio()
 }
 void PlayerAudio::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
 {
-	transportSource.prepareToPlay(samplesPerBlockExpected, sampleRate);
+    transportSource.prepareToPlay(samplesPerBlockExpected, sampleRate);
+    resamplerSource.prepareToPlay(samplesPerBlockExpected, sampleRate);
 }
 void PlayerAudio::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill)
 {
-	transportSource.getNextAudioBlock(bufferToFill);
+    if (shouldPlay) {
+        resamplerSource.getNextAudioBlock(bufferToFill);
+    } else {
+        bufferToFill.clearActiveBufferRegion();
+    }
 }
 void PlayerAudio::releaseResources()
 {
-	transportSource.releaseResources();
+    resamplerSource.releaseResources();
+    transportSource.releaseResources();
 }
 bool PlayerAudio::loadfile(const juce::File& file)
 {
@@ -36,6 +42,9 @@ bool PlayerAudio::loadfile(const juce::File& file)
                 0,
                 nullptr,
                 reader->sampleRate);
+
+            setSpeed(1.0f);
+
             transportSource.start();
 			return true;
         }
@@ -100,4 +109,17 @@ void PlayerAudio::setlooping(bool shouldloop)
 {
     isloopingenabled = shouldloop;
     if (readerSource) readerSource->setLooping(shouldloop);
+}
+
+void PlayerAudio::setSpeed(float newSpeed) {
+    newSpeed = juce::jlimit(0.25f, 4.0f, newSpeed);
+
+    if (currentSpeed != newSpeed)
+    {
+        currentSpeed = newSpeed;
+
+        double resamplingRatio = currentSpeed;
+
+        resamplerSource.setResamplingRatio(resamplingRatio);
+    }
 }
