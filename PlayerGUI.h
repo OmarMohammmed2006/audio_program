@@ -89,12 +89,6 @@ public:
         }
     }
 
-    void drawButtonText(juce::Graphics& g, juce::TextButton& button,
-                   bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override
-    {
-        LookAndFeel_V4::drawButtonText(g, button, shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
-    }
-
     juce::Font getTextButtonFont(juce::TextButton&, int buttonHeight) override
     {
         return juce::Font(14.0f, juce::Font::bold);
@@ -122,13 +116,18 @@ private:
 
     juce::TextButton loadButton{ "Load Files" };
     juce::TextButton restartButton{ "Restart" };
-    juce::TextButton playButton{ "Play" };
+    juce::TextButton playpauseButton{ "Play" };
     juce::TextButton gotostartbutton{ "Go To Start" };
     juce::TextButton gotoendbutton{ "Go To End" };
     juce::TextButton mute_button{ "Mute" };
     juce::TextButton loopbutton{ "Loop: off" };
     juce::TextButton skipBackButton{ "<<" };
     juce::TextButton skipForwardButton{ ">>" };
+
+    juce::TextButton speedHalfButton{ "0.5x" };
+    juce::TextButton speedNormalButton{ "1.0x" };
+    juce::TextButton speedDoubleButton{ "2.0x" };
+    juce::TextButton speedQuadButton{ "4.0x" };
 
     juce::Slider volumeSlider;
     juce::Slider speedSlider;

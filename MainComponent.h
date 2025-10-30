@@ -9,9 +9,10 @@ public:
     MainComponent();
     ~MainComponent() override;
 
-    void prepareToPlay(int samplesPerBlockExpected, double sampleRate);
-    void getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill);
+    void prepareToPlay(int samplesPerBlockExpected, double sampleRate) override;
+    void getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill) override;
     void releaseResources() override;
+
     void paint(juce::Graphics& g) override;
     void resized() override;
     void timerCallback() override;
@@ -23,21 +24,22 @@ public:
 private:
     PlayerAudio player1Audio;
     PlayerAudio player2Audio;
-
     PlayerGUI controls;
-
-    PlayerAudio* activePlayer;
 
     juce::AudioFormatManager formatManager;
     juce::AudioThumbnailCache thumbnailCache;
     juce::AudioThumbnail thumbnail1;
     juce::AudioThumbnail thumbnail2;
+    juce::Label metadataLabel1;
+    juce::Label metadataLabel2;
 
+    PlayerAudio* activePlayer;
     bool track1Active = true;
     bool track2Active = false;
-
     bool isDraggingPlayhead = false;
     int activeTrackDragging = 0;
+
+    void updateMetadataDisplay(const juce::String& metadata, int trackNumber);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

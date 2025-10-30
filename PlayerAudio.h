@@ -10,28 +10,27 @@ public:
 	void getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill);
 	void releaseResources();
 
-	bool loadfile(const juce::File& file);
-	void start();
-	void pause();
+	bool loadfile(const juce::File& file, juce::String& metadata);
 	void play();
+	void pause();
 	bool isPlaying() const { return transportSource.isPlaying(); }
+
 	void mute();
+	bool getMuteState() { return isMuted; }
+	float getPreviousVolume() const { return previousVolume; }
+
 	void setlooping(bool shouldloop);
-	bool islooping() const {return isloopingenabled;}
+	bool islooping() const { return isloopingenabled; }
 
 	void setGain(float gain);
 	float getGain() { return currentGain; }
-	bool getMuteState() { return isMuted; }
-	float getPreviousVolume() const { return previousVolume; }
+
 	void setPosition(double pos);
 	double getPosition() const;
 	double getLength() const;
 
 	void setSpeed(float newSpeed);
 	float getSpeed() const { return currentSpeed; }
-
-	void setShouldPlay(bool play) { shouldPlay = play; }
-	bool getShouldPlay() const { return shouldPlay; }
 
 private:
 	juce::AudioFormatManager formatManager;
@@ -44,8 +43,6 @@ private:
 	float currentSpeed = 1.0f;
 	float currentGain = 0.5f;
 	bool isloopingenabled = false;
-
-	bool shouldPlay = true;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerAudio)
 };

@@ -8,23 +8,39 @@ MainComponent::MainComponent()
 {
     formatManager.registerBasicFormats();
 
+    addAndMakeVisible(metadataLabel1);
+    addAndMakeVisible(metadataLabel2);
+
+    for (auto* label : { &metadataLabel1, &metadataLabel2 })
+    {
+        label->setColour(juce::Label::textColourId, juce::Colours::white);
+        label->setJustificationType(juce::Justification::topLeft);
+        label->setFont(juce::Font(12.0f));
+    }
+
     controls.connectToPlayer(activePlayer);
 
     controls.setOnFileLoadedCallback([this](juce::File file) {
+        juce::String metadata;
         if (track1Active)
         {
             thumbnail1.setSource(new juce::FileInputSource(file));
-            player1Audio.loadfile(file);
+            if (player1Audio.loadfile(file, metadata))
+            {
+                updateMetadataDisplay(metadata, 1);
+            }
         }
         else
         {
             thumbnail2.setSource(new juce::FileInputSource(file));
-            player2Audio.loadfile(file);
+            if (player2Audio.loadfile(file, metadata))
+            {
+                updateMetadataDisplay(metadata, 2);
+            }
         }
     });
 
     addAndMakeVisible(controls);
-
     setSize(1000, 700);
     setAudioChannels(0, 2);
     startTimer(33);
@@ -129,6 +145,13 @@ void MainComponent::resized()
     auto area = getLocalBounds();
 
     auto waveformArea = area.removeFromTop(150);
+
+    auto metadataArea = area.removeFromTop(80); // Space for metadata
+    auto track1MetadataArea = metadataArea.removeFromLeft(getWidth() / 2).reduced(10, 5);
+    auto track2MetadataArea = metadataArea.reduced(10, 5);
+
+    metadataLabel1.setBounds(track1MetadataArea);
+    metadataLabel2.setBounds(track2MetadataArea);
 
     controls.setBounds(area);
 }
@@ -235,4 +258,17 @@ void MainComponent::mouseUp(const juce::MouseEvent& event)
 {
     isDraggingPlayhead = false;
     activeTrackDragging = 0;
+}
+
+void MainComponent::updateMetadataDisplay(const juce::String& metadata, int trackNumber)
+{
+    if (trackNumber == 1)
+    {
+        metadataLabel1.setText(metadata, juce::dontSendNotification);
+    }
+    else if (trackNumber == 2)
+    {
+        metadataLabel2.setText(metadata, juce::dontSendNotification);
+    }
+    repaint();
 }

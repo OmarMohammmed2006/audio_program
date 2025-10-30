@@ -2,31 +2,32 @@
 
 PlayerAudio::PlayerAudio() : resamplerSource(&transportSource, false)
 {
-	formatManager.registerBasicFormats();
+    formatManager.registerBasicFormats();
 }
+
 PlayerAudio::~PlayerAudio()
 {
-	transportSource.setSource(nullptr);
+    transportSource.setSource(nullptr);
 }
+
 void PlayerAudio::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
 {
     transportSource.prepareToPlay(samplesPerBlockExpected, sampleRate);
     resamplerSource.prepareToPlay(samplesPerBlockExpected, sampleRate);
 }
+
 void PlayerAudio::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill)
 {
-    if (shouldPlay) {
-        resamplerSource.getNextAudioBlock(bufferToFill);
-    } else {
-        bufferToFill.clearActiveBufferRegion();
-    }
+    resamplerSource.getNextAudioBlock(bufferToFill);
 }
+
 void PlayerAudio::releaseResources()
 {
     resamplerSource.releaseResources();
     transportSource.releaseResources();
 }
-bool PlayerAudio::loadfile(const juce::File& file)
+
+bool PlayerAudio::loadfile(const juce::File& file, juce::String& metadata)
 {
     if (file.existsAsFile())
     {
@@ -37,22 +38,35 @@ bool PlayerAudio::loadfile(const juce::File& file)
             readerSource.reset();
 
             readerSource = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
-
-            transportSource.setSource(readerSource.get(),
-                0,
-                nullptr,
-                reader->sampleRate);
-
+            transportSource.setSource(readerSource.get(), 0, nullptr, reader->sampleRate);
             setSpeed(1.0f);
 
-            transportSource.start();
-			return true;
+            juce::StringArray metadataLines;
+            auto& metadataValues = reader->metadataValues;
+
+            metadataLines.add("File: " + file.getFileName());
+            metadataLines.add("Duration: " + juce::String(transportSource.getLengthInSeconds(), 1) + " seconds");
+
+            static const juce::String emptyString;
+            const juce::String title = metadataValues.getValue("title", emptyString);
+            const juce::String artist = metadataValues.getValue("artist", emptyString);
+            const juce::String album = metadataValues.getValue("album", emptyString);
+
+            if (!title.isEmpty()) metadataLines.add("Title: " + title);
+            if (!artist.isEmpty()) metadataLines.add("Artist: " + artist);
+            if (!album.isEmpty()) metadataLines.add("Album: " + album);
+
+            metadata = metadataLines.joinIntoString("\n");
+            return true;
         }
-		return false;
+        metadata = "Error: Could not read file";
+        return false;
     }
-	return false;
+    metadata = "Error: File does not exist";
+    return false;
 }
-void PlayerAudio::start()
+
+void PlayerAudio::play()
 {
     transportSource.start();
 }
@@ -60,13 +74,6 @@ void PlayerAudio::start()
 void PlayerAudio::pause()
 {
     transportSource.stop();
-	transportSource.setPosition(transportSource.getCurrentPosition());
-}
-
-void PlayerAudio::play()
-{
-    transportSource.setPosition(transportSource.getCurrentPosition());
-    transportSource.start();
 }
 
 void PlayerAudio::mute() {
@@ -78,7 +85,6 @@ void PlayerAudio::mute() {
         setGain(previousVolume);
     }
 }
-
 
 void PlayerAudio::setGain(float gain)
 {
@@ -117,9 +123,7 @@ void PlayerAudio::setSpeed(float newSpeed) {
     if (currentSpeed != newSpeed)
     {
         currentSpeed = newSpeed;
-
         double resamplingRatio = currentSpeed;
-
         resamplerSource.setResamplingRatio(resamplingRatio);
     }
 }
