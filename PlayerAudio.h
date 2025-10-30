@@ -11,30 +11,35 @@ public:
 	void releaseResources();
 
 	bool loadfile(const juce::File& file, juce::String& metadata);
-	void start();
+	void play();
 	void pause();
+	bool isPlaying() const { return transportSource.isPlaying(); }
+
 	void mute();
+	bool getMuteState() { return isMuted; }
+	float getPreviousVolume() const { return previousVolume; }
+
 	void setlooping(bool shouldloop);
-	bool islooping() const {return isloopingenabled;}
-	void setSpeed();
+	bool islooping() const { return isloopingenabled; }
 
 	void setGain(float gain);
 	float getGain() { return currentGain; }
-	bool getMuteState() { return isMuted; }
-	bool getPauseState() { return isPlaying; }
-	float getPreviousVolume() const { return previousVolume; }
+
 	void setPosition(double pos);
 	double getPosition() const;
 	double getLength() const;
+
+	void setSpeed(float newSpeed);
+	float getSpeed() const { return currentSpeed; }
 
 private:
 	juce::AudioFormatManager formatManager;
 	std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
 	juce::AudioTransportSource transportSource;
+	juce::ResamplingAudioSource resamplerSource;
 
 	float previousVolume = 0.5f;
 	bool isMuted = false;
-	bool isPlaying = false;
 	float currentSpeed = 1.0f;
 	float currentGain = 0.5f;
 	bool isloopingenabled = false;
