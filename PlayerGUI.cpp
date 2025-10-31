@@ -13,13 +13,24 @@ PlayerGUI::PlayerGUI()
 
     for (auto* btn : { &loadButton, &restartButton, &playpauseButton,
         &skipBackButton, &skipForwardButton, &mute_button, &loopbutton,&gotostartbutton,&gotoendbutton,
-        &speedHalfButton, &speedNormalButton, &speedDoubleButton, &speedQuadButton})
+        &speedHalfButton, &speedNormalButton, &speedDoubleButton, &speedQuadButton, &setPointAButton, &setPointBButton,
+        &clearLoopPointsButton, &toggleSegmentLoopButton })
     {
         addAndMakeVisible(btn);
         btn->addListener(this);
         setupModernButton(*btn);
     }
 
+    loopStartLabel.setText("A: --:--", juce::dontSendNotification);
+    loopEndLabel.setText("B: --:--", juce::dontSendNotification);
+    loopStartLabel.setColour(juce::Label::textColourId, juce::Colours::yellow.withAlpha(0.9f));
+    loopEndLabel.setColour(juce::Label::textColourId, juce::Colours::yellow.withAlpha(0.9f));
+    loopStartLabel.setJustificationType(juce::Justification::centredLeft);
+    loopEndLabel.setJustificationType(juce::Justification::centredRight);
+    loopStartLabel.setFont(juce::Font(12.0f, juce::Font::bold));
+    loopEndLabel.setFont(juce::Font(12.0f, juce::Font::bold));
+    addAndMakeVisible(loopStartLabel);
+    addAndMakeVisible(loopEndLabel);
     volumeSlider.setRange(0.0, 1.0, 0.01);
     volumeSlider.setValue(0.5);
     volumeSlider.addListener(this);
@@ -107,6 +118,24 @@ void PlayerGUI::resized()
     const int speedButtonHeight = 30;
     const int speedY = 200;
     int speedX = 10;
+    const int abButtonWidth = 80;
+    const int abButtonHeight = 30;
+    const int abY = 325;
+    int abX = 10;
+
+    setPointAButton.setBounds(abX, abY, abButtonWidth, abButtonHeight);
+    abX += abButtonWidth + 5;
+
+    setPointBButton.setBounds(abX, abY, abButtonWidth, abButtonHeight);
+    abX += abButtonWidth + 5;
+
+    clearLoopPointsButton.setBounds(abX, abY, abButtonWidth, abButtonHeight);
+    abX += abButtonWidth + 5;
+
+    toggleSegmentLoopButton.setBounds(abX, abY, abButtonWidth + 20, abButtonHeight);
+
+    loopStartLabel.setBounds(10, abY + 35, 80, 20);
+    loopEndLabel.setBounds(getWidth() - 90, abY + 35, 80, 20);
 
     speedHalfButton.setBounds(speedX, speedY, speedButtonWidth, speedButtonHeight);
     speedX += speedButtonWidth + spacing;
@@ -223,6 +252,39 @@ void PlayerGUI::buttonClicked(juce::Button* button)
     {
         speedSlider.setValue(4.0);
     }
+    else if (button == &setPointAButton)
+    {
+        double currentPos = connectedPlayer->getPosition();
+        // In practice, this will be set by the waveform click in MainComponent
+        // For now, just set at current position
+        connectedPlayer->setLoopPoints(currentPos, connectedPlayer->getLoopEnd());
+        updateLoopLabels();
+    }
+    else if (button == &setPointBButton)
+    {
+        double currentPos = connectedPlayer->getPosition();
+        connectedPlayer->setLoopPoints(connectedPlayer->getLoopStart(), currentPos);
+        updateLoopLabels();
+    }
+    else if (button == &clearLoopPointsButton)
+    {
+        connectedPlayer->clearLoopPoints();
+        updateLoopLabels();
+        toggleSegmentLoopButton.setButtonText("A-B Loop: Off");
+    }
+    else if (button == &toggleSegmentLoopButton)
+    {
+        if (connectedPlayer->isSegmentLooping()) {
+            connectedPlayer->clearLoopPoints();
+            toggleSegmentLoopButton.setButtonText("A-B Loop: Off");
+        } else {
+            // Enable segment looping if points are set
+            if (connectedPlayer->getLoopEnd() > connectedPlayer->getLoopStart()) {
+                toggleSegmentLoopButton.setButtonText("A-B Loop: On");
+            }
+        }
+        updateLoopLabels();
+    }
 }
 
 void PlayerGUI::sliderValueChanged(juce::Slider* slider)
@@ -259,4 +321,18 @@ void PlayerGUI::connectToPlayer(PlayerAudio* player)
 {
     connectedPlayer = player;
     updatePlayPauseButton();
+}
+void PlayerGUI::updateLoopLabels()
+{
+    if (!connectedPlayer) return;
+
+    auto formatTime = [](double seconds) {
+        if (seconds < 0.0) seconds = 0.0;
+        int mins = static_cast<int>(seconds) / 60;
+        int secs = static_cast<int>(seconds) % 60;
+        return juce::String::formatted("%d:%02d", mins, secs);
+    };
+
+    loopStartLabel.setText("A: " + formatTime(connectedPlayer->getLoopStart()), juce::dontSendNotification);
+    loopEndLabel.setText("B: " + formatTime(connectedPlayer->getLoopEnd()), juce::dontSendNotification);
 }

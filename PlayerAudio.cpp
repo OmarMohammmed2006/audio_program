@@ -18,7 +18,9 @@ void PlayerAudio::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
 
 void PlayerAudio::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill)
 {
+    checkLoopBoundaries();
     resamplerSource.getNextAudioBlock(bufferToFill);
+    checkLoopBoundaries();
 }
 
 void PlayerAudio::releaseResources()
@@ -126,4 +128,45 @@ void PlayerAudio::setSpeed(float newSpeed) {
         double resamplingRatio = currentSpeed;
         resamplerSource.setResamplingRatio(resamplingRatio);
     }
+}
+void PlayerAudio::setLoopPoints(double startTime, double endTime)
+{
+    loopStartTime = juce::jmax(0.0, startTime);
+    loopEndTime = juce::jmin(getLength(), endTime);
+    
+    if (loopEndTime <= loopStartTime)
+    {
+        loopEndTime = loopStartTime + 1.0;
+        if (loopEndTime > getLength())
+        {
+            loopEndTime = getLength();
+            if (loopStartTime >= loopEndTime)
+            {
+                isSegmentLoopEnabled = false;
+                return;
+            }
+        }
+    }
+
+    isSegmentLoopEnabled = true;
+}
+
+void PlayerAudio::clearLoopPoints()
+{
+    isSegmentLoopEnabled = false;
+    loopStartTime = 0.0;
+    loopEndTime = getLength();
+}
+void PlayerAudio::checkLoopBoundaries()
+{
+    if (!isSegmentLoopEnabled || !readerSource) return;
+
+    double currentPos = getPosition();
+
+    if (currentPos >= loopEndTime && currentPos > previousPosition)
+    {
+        setPosition(loopStartTime);
+    }
+
+    previousPosition = currentPos;
 }

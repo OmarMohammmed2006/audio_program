@@ -123,6 +123,10 @@ private:
     juce::TextButton loopbutton{ "Loop: off" };
     juce::TextButton skipBackButton{ "<<" };
     juce::TextButton skipForwardButton{ ">>" };
+    juce::TextButton setPointAButton{ "Set Point A" };
+    juce::TextButton setPointBButton{ "Set Point B" };
+    juce::TextButton clearLoopPointsButton{ "Clear A-B" };
+    juce::TextButton toggleSegmentLoopButton{ "A-B Loop: Off" };
 
     juce::TextButton speedHalfButton{ "0.5x" };
     juce::TextButton speedNormalButton{ "1.0x" };
@@ -133,6 +137,9 @@ private:
     juce::Slider speedSlider;
     juce::Label volumeLabel;
     juce::Label speedLabel;
+    juce::Label loopStartLabel;
+    juce::Label loopEndLabel;
+
 
     std::unique_ptr<juce::FileChooser> fileChooser;
     std::function<void(juce::File)> onFileLoaded;
@@ -140,6 +147,7 @@ private:
     void buttonClicked(juce::Button* button) override;
     void sliderValueChanged(juce::Slider* slider) override;
     void updatePlayPauseButton();
+    void updateLoopLabels();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerGUI)
 };

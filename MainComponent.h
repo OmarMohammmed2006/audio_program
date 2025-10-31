@@ -40,6 +40,6 @@ private:
     int activeTrackDragging = 0;
 
     void updateMetadataDisplay(const juce::String& metadata, int trackNumber);
-
+    void drawLoopRegion(juce::Graphics& g, juce::AudioThumbnail& thumbnail, juce::Rectangle<int> area, PlayerAudio* player);
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

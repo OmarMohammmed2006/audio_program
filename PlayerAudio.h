@@ -32,6 +32,13 @@ public:
 	void setSpeed(float newSpeed);
 	float getSpeed() const { return currentSpeed; }
 
+	void setLoopPoints( double startTime, double endTime);
+	void clearLoopPoints();
+	bool isSegmentLooping() const {return isSegmentLoopEnabled;}
+	double getLoopStart() const { return loopStartTime;}
+	double getLoopEnd() const { return loopEndTime;}
+
+
 private:
 	juce::AudioFormatManager formatManager;
 	std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
@@ -43,6 +50,11 @@ private:
 	float currentSpeed = 1.0f;
 	float currentGain = 0.5f;
 	bool isloopingenabled = false;
+	bool isSegmentLoopEnabled = false;
+	double loopStartTime = 0.0;
+	double loopEndTime = 0.0;
+	double previousPosition = 0.0;
+	void checkLoopBoundaries();
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerAudio)
 };
