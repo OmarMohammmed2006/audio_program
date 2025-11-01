@@ -28,6 +28,7 @@ MainComponent::MainComponent()
             if (player1Audio.loadfile(file, metadata))
             {
                 updateMetadataDisplay(metadata, 1);
+                lastLoadedFile1 = file;
             }
         }
         else
@@ -36,6 +37,7 @@ MainComponent::MainComponent()
             if (player2Audio.loadfile(file, metadata))
             {
                 updateMetadataDisplay(metadata, 2);
+                lastLoadedFile2 = file;
             }
         }
     });
@@ -44,10 +46,14 @@ MainComponent::MainComponent()
     setSize(1000, 700);
     setAudioChannels(0, 2);
     startTimer(33);
+    juce::Timer::callAfterDelay(500, [this]() {
+        loadSession();
+    });
 }
 
 MainComponent::~MainComponent()
 {
+    saveSession();
     shutdownAudio();
 }
 
@@ -161,6 +167,12 @@ void MainComponent::resized()
 void MainComponent::timerCallback()
 {
     repaint();
+    static int saveCounter = 0;
+    if (++saveCounter >= 150)
+    {
+        saveSession();
+        saveCounter = 0;
+    }
 }
 
 void MainComponent::mouseDown(const juce::MouseEvent& event)
@@ -244,6 +256,7 @@ void MainComponent::mouseDown(const juce::MouseEvent& event)
         }
         repaint();
     }
+    saveSession();
 }
 
 void MainComponent::mouseDrag(const juce::MouseEvent& event)
@@ -289,6 +302,7 @@ void MainComponent::mouseUp(const juce::MouseEvent& event)
 {
     isDraggingPlayhead = false;
     activeTrackDragging = 0;
+    saveSession();
 }
 
 void MainComponent::updateMetadataDisplay(const juce::String& metadata, int trackNumber)
@@ -329,5 +343,111 @@ void MainComponent::drawLoopRegion(juce::Graphics& g, juce::AudioThumbnail& thum
         g.setFont(juce::Font(10.0f, juce::Font::bold));
         g.drawText("A", startX - 10, drawArea.getY() - 15, 20, 15, juce::Justification::centred);
         g.drawText("B", endX - 10, drawArea.getY() - 15, 20, 15, juce::Justification::centred);
+    }
+}
+juce::PropertiesFile* MainComponent::getSettingsFile()
+{
+    juce::PropertiesFile::Options options;
+    options.applicationName = "AudioPlayer";
+    options.filenameSuffix = "settings";
+    options.osxLibrarySubFolder = "Application Support";
+    juce::File settingsFolder = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("AudioPlayer");
+    options.folderName = settingsFolder.getFullPathName();
+
+    return new juce::PropertiesFile(options);
+}
+void MainComponent::saveSession()
+{
+    std::unique_ptr<juce::PropertiesFile> settings(getSettingsFile());
+    lastPosition1 = player1Audio.getPosition();
+    lastPosition2 = player2Audio.getPosition();
+    wasPlaying1 = player1Audio.isPlaying();
+    wasPlaying2 = player2Audio.isPlaying();
+    lastActiveTrack = track1Active ? 1 : 2;
+    settings->setValue("lastFile1", lastLoadedFile1.getFullPathName());
+    settings->setValue("lastFile2", lastLoadedFile2.getFullPathName());
+    settings->setValue("lastPosition1", lastPosition1);
+    settings->setValue("lastPosition2", lastPosition2);
+    settings->setValue("wasPlaying1", wasPlaying1);
+    settings->setValue("wasPlaying2", wasPlaying2);
+    settings->setValue("lastActiveTrack", lastActiveTrack);
+    settings->save();
+}
+void MainComponent::loadSession()
+{
+    std::unique_ptr<juce::PropertiesFile> settings(getSettingsFile());
+
+    if (settings->getFile().existsAsFile())
+    {
+        juce::String filePath1 = settings->getValue("lastFile1");
+        juce::String filePath2 = settings->getValue("lastFile2");
+
+        lastPosition1 = settings->getDoubleValue("lastPosition1", 0.0);
+        lastPosition2 = settings->getDoubleValue("lastPosition2", 0.0);
+        wasPlaying1 = settings->getBoolValue("wasPlaying1", false);
+        wasPlaying2 = settings->getBoolValue("wasPlaying2", false);
+        lastActiveTrack = settings->getIntValue("lastActiveTrack", 1);
+
+        if (juce::File::isAbsolutePath(filePath1))
+        {
+            juce::File file1(filePath1);
+            if (file1.existsAsFile())
+            {
+                juce::String metadata;
+                if (player1Audio.loadfile(file1, metadata))
+                {
+                    thumbnail1.setSource(new juce::FileInputSource(file1));
+                    updateMetadataDisplay(metadata, 1);
+                    lastLoadedFile1 = file1;
+
+                    player1Audio.setPosition(lastPosition1);
+
+                    if (wasPlaying1)
+                    {
+                        player1Audio.play();
+                    }
+                }
+            }
+        }
+
+        if (juce::File::isAbsolutePath(filePath2))
+        {
+            juce::File file2(filePath2);
+            if (file2.existsAsFile())
+            {
+                juce::String metadata;
+                if (player2Audio.loadfile(file2, metadata))
+                {
+                    thumbnail2.setSource(new juce::FileInputSource(file2));
+                    updateMetadataDisplay(metadata, 2);
+                    lastLoadedFile2 = file2;
+
+                    player2Audio.setPosition(lastPosition2);
+
+                    // Restore play state if it was playing
+                    if (wasPlaying2)
+                    {
+                        player2Audio.play();
+                    }
+                }
+            }
+        }
+
+        if (lastActiveTrack == 1 && track1Active != true)
+        {
+            track1Active = true;
+            track2Active = false;
+            activePlayer = &player1Audio;
+            controls.connectToPlayer(activePlayer);
+        }
+        else if (lastActiveTrack == 2 && track2Active != true)
+        {
+            track1Active = false;
+            track2Active = true;
+            activePlayer = &player2Audio;
+            controls.connectToPlayer(activePlayer);
+        }
+
+        repaint();
     }
 }

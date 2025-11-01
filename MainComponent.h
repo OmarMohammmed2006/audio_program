@@ -41,5 +41,15 @@ private:
 
     void updateMetadataDisplay(const juce::String& metadata, int trackNumber);
     void drawLoopRegion(juce::Graphics& g, juce::AudioThumbnail& thumbnail, juce::Rectangle<int> area, PlayerAudio* player);
+    void saveSession();
+    void loadSession();
+    juce::PropertiesFile* getSettingsFile();
+    juce::File lastLoadedFile1;
+    juce::File lastLoadedFile2;
+    double lastPosition1 = 0.0;
+    double lastPosition2 = 0.0;
+    bool wasPlaying1 = false;
+    bool wasPlaying2 = false;
+    int lastActiveTrack = 1;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
