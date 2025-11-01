@@ -14,13 +14,18 @@ PlayerGUI::PlayerGUI()
     for (auto* btn : { &loadButton, &restartButton, &playpauseButton,
         &skipBackButton, &skipForwardButton, &mute_button, &loopbutton,&gotostartbutton,&gotoendbutton,
         &speedHalfButton, &speedNormalButton, &speedDoubleButton, &speedQuadButton, &setPointAButton, &setPointBButton,
-        &clearLoopPointsButton, &toggleSegmentLoopButton })
+        &clearLoopPointsButton, &toggleSegmentLoopButton, &fadeInButton, &fadeOutButton, &removeFadesButton })
     {
         addAndMakeVisible(btn);
         btn->addListener(this);
         setupModernButton(*btn);
     }
 
+    fadeStatusLabel.setText("Fades: None", juce::dontSendNotification);
+    fadeStatusLabel.setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.9f));
+    fadeStatusLabel.setJustificationType(juce::Justification::centredLeft);
+    fadeStatusLabel.setFont(juce::Font(12.0f, juce::Font::bold));
+    addAndMakeVisible(fadeStatusLabel);
     loopStartLabel.setText("A: --:--", juce::dontSendNotification);
     loopEndLabel.setText("B: --:--", juce::dontSendNotification);
     loopStartLabel.setColour(juce::Label::textColourId, juce::Colours::yellow.withAlpha(0.9f));
@@ -122,6 +127,16 @@ void PlayerGUI::resized()
     const int abButtonHeight = 30;
     const int abY = 325;
     int abX = 10;
+    const int fadeButtonWidth = 80;
+    const int fadeButtonHeight = 30;
+    const int fadeY = 380;
+    int fadeX = 10;
+    fadeInButton.setBounds(fadeX, fadeY, fadeButtonWidth, fadeButtonHeight);
+    fadeX += fadeButtonWidth + 5;
+    fadeOutButton.setBounds(fadeX, fadeY, fadeButtonWidth, fadeButtonHeight);
+    fadeX += fadeButtonWidth + 5;
+    removeFadesButton.setBounds(fadeX, fadeY, fadeButtonWidth + 10, fadeButtonHeight);
+    fadeStatusLabel.setBounds(10, fadeY + 35, getWidth() - 20, 20);
 
     setPointAButton.setBounds(abX, abY, abButtonWidth, abButtonHeight);
     abX += abButtonWidth + 5;
@@ -147,6 +162,7 @@ void PlayerGUI::resized()
     speedX += speedButtonWidth + spacing;
 
     speedQuadButton.setBounds(speedX, speedY, speedButtonWidth, speedButtonHeight);
+
 }
 
 void PlayerGUI::buttonClicked(juce::Button* button)
@@ -285,6 +301,21 @@ void PlayerGUI::buttonClicked(juce::Button* button)
         }
         updateLoopLabels();
     }
+    else if (button == &fadeInButton)
+    {
+        connectedPlayer->applyFadeIn();
+        updateFadeStatus();
+    }
+    else if (button == &fadeOutButton)
+    {
+        connectedPlayer->applyFadeOut();
+        updateFadeStatus();
+    }
+    else if (button == &removeFadesButton)
+    {
+        connectedPlayer->removeFades();
+        updateFadeStatus();
+    }
 }
 
 void PlayerGUI::sliderValueChanged(juce::Slider* slider)
@@ -335,4 +366,24 @@ void PlayerGUI::updateLoopLabels()
 
     loopStartLabel.setText("A: " + formatTime(connectedPlayer->getLoopStart()), juce::dontSendNotification);
     loopEndLabel.setText("B: " + formatTime(connectedPlayer->getLoopEnd()), juce::dontSendNotification);
+}
+void PlayerGUI::updateFadeStatus()
+{
+    if (!connectedPlayer) return;
+
+    bool fadeIn = connectedPlayer->hasFadeInApplied();
+    bool fadeOut = connectedPlayer->hasFadeOutApplied();
+
+    if (fadeIn && fadeOut) {
+        fadeStatusLabel.setText("Fades: Both Applied", juce::dontSendNotification);
+    }
+    else if (fadeIn) {
+        fadeStatusLabel.setText("Fades: In Only", juce::dontSendNotification);
+    }
+    else if (fadeOut) {
+        fadeStatusLabel.setText("Fades: Out Only", juce::dontSendNotification);
+    }
+    else {
+        fadeStatusLabel.setText("Fades: None", juce::dontSendNotification);
+    }
 }

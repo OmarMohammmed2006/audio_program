@@ -37,6 +37,11 @@ public:
 	bool isSegmentLooping() const {return isSegmentLoopEnabled;}
 	double getLoopStart() const { return loopStartTime;}
 	double getLoopEnd() const { return loopEndTime;}
+	void applyFadeIn();
+	void applyFadeOut();
+	void removeFades();
+	bool hasFadeInApplied() const { return hasFadeIn; }
+	bool hasFadeOutApplied() const { return hasFadeOut; }
 
 
 private:
@@ -55,6 +60,12 @@ private:
 	double loopEndTime = 0.0;
 	double previousPosition = 0.0;
 	void checkLoopBoundaries();
+	bool hasFadeIn = false;
+	bool hasFadeOut = false;
+	double fadeInDuration = 0.0;
+	double fadeOutDuration = 0.0;
+	double calculateFadeGain(double currentTime);
+
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerAudio)
 };

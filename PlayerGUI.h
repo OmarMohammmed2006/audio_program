@@ -132,6 +132,10 @@ private:
     juce::TextButton speedNormalButton{ "1.0x" };
     juce::TextButton speedDoubleButton{ "2.0x" };
     juce::TextButton speedQuadButton{ "4.0x" };
+    juce::TextButton fadeInButton{ "Fade In" };
+    juce::TextButton fadeOutButton{ "Fade Out" };
+    juce::TextButton removeFadesButton{ "Remove Fades" };
+    juce::Label fadeStatusLabel;
 
     juce::Slider volumeSlider;
     juce::Slider speedSlider;
@@ -148,6 +152,7 @@ private:
     void sliderValueChanged(juce::Slider* slider) override;
     void updatePlayPauseButton();
     void updateLoopLabels();
+    void updateFadeStatus();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerGUI)
 };

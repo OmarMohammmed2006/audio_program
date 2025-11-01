@@ -21,6 +21,21 @@ void PlayerAudio::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferTo
     checkLoopBoundaries();
     resamplerSource.getNextAudioBlock(bufferToFill);
     checkLoopBoundaries();
+    if (hasFadeIn || hasFadeOut)
+    {
+        double currentTime = getPosition();
+        double fadeGain = calculateFadeGain(currentTime);
+        for (int channel = 0; channel < bufferToFill.buffer->getNumChannels(); ++channel)
+        {
+            float* channelData = bufferToFill.buffer->getWritePointer(channel, bufferToFill.startSample);
+
+            for (int sample = 0; sample < bufferToFill.numSamples; ++sample)
+            {
+                channelData[sample] *= static_cast<float>(fadeGain);
+            }
+        }
+    }
+    checkLoopBoundaries();
 }
 
 void PlayerAudio::releaseResources()
@@ -133,7 +148,7 @@ void PlayerAudio::setLoopPoints(double startTime, double endTime)
 {
     loopStartTime = juce::jmax(0.0, startTime);
     loopEndTime = juce::jmin(getLength(), endTime);
-    
+
     if (loopEndTime <= loopStartTime)
     {
         loopEndTime = loopStartTime + 1.0;
@@ -169,4 +184,38 @@ void PlayerAudio::checkLoopBoundaries()
     }
 
     previousPosition = currentPos;
+}
+void PlayerAudio::applyFadeIn()
+{
+    double totalLength = getLength();
+    fadeInDuration = 0.1 * totalLength;
+    hasFadeIn = true;
+}
+void PlayerAudio::applyFadeOut()
+{
+    double totalLength = getLength();
+    fadeOutDuration = 0.1 * totalLength;
+    hasFadeOut = true;
+}
+void PlayerAudio::removeFades()
+{
+    hasFadeIn = false;
+    hasFadeOut = false;
+}
+double PlayerAudio::calculateFadeGain(double currentTime)
+{
+    double totalLength = getLength();
+    double gain = 1.0f;
+    if (hasFadeIn && currentTime < fadeInDuration && fadeInDuration > 0.0)
+    {
+        gain *= (currentTime / fadeInDuration);
+    }
+    if (hasFadeOut && currentTime > (totalLength - fadeOutDuration) && fadeOutDuration > 0.0)
+    {
+        double fadeOutStart = totalLength - fadeOutDuration;
+        double fadeProgress = (currentTime - fadeOutStart) / fadeOutDuration;
+        gain *= (1.0 - fadeProgress);
+    }
+
+    return juce::jlimit(0.0f, 1.0f, static_cast<float>(gain));
 }
