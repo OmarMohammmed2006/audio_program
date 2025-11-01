@@ -1,4 +1,5 @@
 #include "PlayerGUI.h"
+#include "MainComponent.h"
 
 PlayerGUI::PlayerGUI()
 {
@@ -14,7 +15,7 @@ PlayerGUI::PlayerGUI()
     for (auto* btn : { &loadButton, &restartButton, &playpauseButton,
         &skipBackButton, &skipForwardButton, &mute_button, &loopbutton,&gotostartbutton,&gotoendbutton,
         &speedHalfButton, &speedNormalButton, &speedDoubleButton, &speedQuadButton, &setPointAButton, &setPointBButton,
-        &clearLoopPointsButton, &toggleSegmentLoopButton, &fadeInButton, &fadeOutButton, &removeFadesButton })
+        &clearLoopPointsButton, &toggleSegmentLoopButton, &fadeInButton, &fadeOutButton, &removeFadesButton, &nextButton, &previousButton })
     {
         addAndMakeVisible(btn);
         btn->addListener(this);
@@ -113,6 +114,13 @@ void PlayerGUI::resized()
     gotoendbutton.setBounds(x, y, buttonWidth, buttonHeight);
     x += buttonWidth + spacing;
 
+    previousButton.setBounds(x, y, buttonWidth, buttonHeight);
+    x += buttonWidth + spacing;
+
+    nextButton.setBounds(x, y, buttonWidth, buttonHeight);
+    x += buttonWidth + spacing;
+
+
     volumeLabel.setBounds(10, 80, getWidth() - 20, 20);
     volumeSlider.setBounds(10, 100, getWidth() - 20, 30);
 
@@ -171,22 +179,22 @@ void PlayerGUI::buttonClicked(juce::Button* button)
 
     if (button == &loadButton)
     {
-        fileChooser = std::make_unique<juce::FileChooser>(
-            "Select an audio file...",
-            juce::File{},
-            "*.wav;*.mp3");
+        fileChooser = std::make_unique<juce::FileChooser>("Select audio files...",
+            juce::File::getSpecialLocation(juce::File::userDesktopDirectory),
+            "*.mp3;*.wav;*.aiff;*.flac", true);
 
-        fileChooser->launchAsync(
-            juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+        fileChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::canSelectMultipleItems,
             [this](const juce::FileChooser& fc)
             {
-                auto file = fc.getResult();
-                juce::String metadata;
-                if (connectedPlayer->loadfile(file, metadata))
-                {
-                    if (onFileLoaded)
-                        onFileLoaded(file);
-                    // Metadata is handled by MainComponent
+                auto files = fc.getResults();  // Get all selected files
+                if (files.isEmpty()) return;
+
+                // Store in playlist (access MainComponent via dynamic_cast or similar)
+                if (auto* mainComp = dynamic_cast<MainComponent*>(getParentComponent())) {
+                    mainComp->playlist = files;
+                    mainComp->currentPlaylistIndex = 0;
+                    mainComp->loadPlaylistFile(mainComp->playlist[0]);  // Load first file
+                    if (connectedPlayer) connectedPlayer->play();
                 }
             });
     }
@@ -250,6 +258,21 @@ void PlayerGUI::buttonClicked(juce::Button* button)
         if (length > 0.0)
         {
             connectedPlayer->setPosition(length);
+        }
+    }
+
+    else if (button == &nextButton)
+    {
+        if (auto* mainComp = dynamic_cast<MainComponent*>(getParentComponent()))
+        {
+            mainComp->playNextInPlaylist();
+        }
+    }
+    else if (button == &previousButton)
+    {
+        if (auto* mainComp = dynamic_cast<MainComponent*>(getParentComponent()))
+        {
+            mainComp->playPreviousInPlaylist();
         }
     }
     else if (button == &speedHalfButton)

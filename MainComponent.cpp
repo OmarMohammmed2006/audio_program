@@ -2,9 +2,9 @@
 
 MainComponent::MainComponent()
     : thumbnailCache(5),
-      thumbnail1(512, formatManager, thumbnailCache),
-      thumbnail2(512, formatManager, thumbnailCache),
-      activePlayer(&player1Audio)
+    thumbnail1(512, formatManager, thumbnailCache),
+    thumbnail2(512, formatManager, thumbnailCache),
+    activePlayer(&player1Audio)
 {
     formatManager.registerBasicFormats();
 
@@ -15,7 +15,7 @@ MainComponent::MainComponent()
     {
         label->setColour(juce::Label::textColourId, juce::Colours::white);
         label->setJustificationType(juce::Justification::topLeft);
-        label->setFont(juce::Font(12.0f));
+        label->setFont(juce::Font(juce::FontOptions(12.0f)));
     }
 
     controls.connectToPlayer(activePlayer);
@@ -40,7 +40,7 @@ MainComponent::MainComponent()
                 lastLoadedFile2 = file;
             }
         }
-    });
+        });
 
     addAndMakeVisible(controls);
     setSize(1000, 700);
@@ -48,7 +48,7 @@ MainComponent::MainComponent()
     startTimer(33);
     juce::Timer::callAfterDelay(500, [this]() {
         loadSession();
-    });
+        });
 }
 
 MainComponent::~MainComponent()
@@ -69,7 +69,8 @@ void MainComponent::getNextAudioBlock(const juce::AudioSourceChannelInfo& buffer
 
     if (track1Active) {
         player1Audio.getNextAudioBlock(bufferToFill);
-    } else {
+    }
+    else {
         player2Audio.getNextAudioBlock(bufferToFill);
     }
 }
@@ -84,9 +85,9 @@ void MainComponent::paint(juce::Graphics& g)
 {
     juce::ColourGradient gradient(
         juce::Colours::cyan,
-        0, 0,
+        0.0f, 0.0f,
         juce::Colour(juce::Colours::darkblue),
-        0, getHeight(),
+        0.0f, (float)getHeight(),
         false
     );
     g.setGradientFill(gradient);
@@ -97,14 +98,15 @@ void MainComponent::paint(juce::Graphics& g)
     auto track1Area = waveformArea.removeFromLeft(getWidth() / 2).reduced(10, 5);
     auto track2Area = waveformArea.reduced(10, 5);
 
-    auto drawWaveform = [this,&g](juce::AudioThumbnail& thumbnail, PlayerAudio* player, juce::Rectangle<int> area, bool isActive, const juce::String& name) {
+    // Define the drawWaveform lambda function
+    auto drawWaveform = [&g](juce::AudioThumbnail& thumbnail, PlayerAudio* player, juce::Rectangle<int> area, bool isActive, const juce::String& name) {
         g.setColour(isActive ? juce::Colours::blue.withAlpha(0.4f) : juce::Colours::black.withAlpha(0.3f));
         g.fillRoundedRectangle(area.toFloat(), 8.0f);
         g.setColour(isActive ? juce::Colours::yellow : juce::Colours::white.withAlpha(0.5f));
         g.drawRoundedRectangle(area.toFloat(), 8.0f, 2.0f);
 
         g.setColour(juce::Colours::white);
-        g.setFont(14.0f);
+        g.setFont(juce::Font(juce::FontOptions(14.0f)));
         g.drawText(name, area.removeFromTop(20), juce::Justification::centred);
 
         if (thumbnail.getTotalLength() > 0.0)
@@ -119,18 +121,18 @@ void MainComponent::paint(juce::Graphics& g)
             {
                 auto playheadX = drawArea.getX() + (currentPos / thumbnail.getTotalLength()) * drawArea.getWidth();
                 g.setColour(juce::Colours::red);
-                g.drawLine(playheadX, drawArea.getY(), playheadX, drawArea.getBottom(), 2.0f);
+                g.drawLine((float)playheadX, (float)drawArea.getY(), (float)playheadX, (float)drawArea.getBottom(), 2.0f);
             }
 
             g.setColour(juce::Colours::white);
-            g.setFont(12.0f);
+            g.setFont(juce::Font(juce::FontOptions(12.0f)));
 
             auto formatTime = [](double seconds) {
                 if (seconds < 0.0) seconds = 0.0;
                 int mins = static_cast<int>(seconds) / 60;
                 int secs = static_cast<int>(seconds) % 60;
                 return juce::String::formatted("%d:%02d", mins, secs);
-            };
+                };
 
             g.drawText(formatTime(currentPos), drawArea, juce::Justification::bottomLeft);
             g.drawText(formatTime(thumbnail.getTotalLength()), drawArea, juce::Justification::bottomRight);
@@ -140,12 +142,11 @@ void MainComponent::paint(juce::Graphics& g)
             g.setColour(juce::Colours::white.withAlpha(0.7f));
             g.drawText("Click to load audio file", area, juce::Justification::centred);
         }
-       this->drawLoopRegion(g, thumbnail, area, player);
-    };
+        };
 
+    // Draw the waveforms
     drawWaveform(thumbnail1, &player1Audio, track1Area, track1Active, "Track 1");
     drawWaveform(thumbnail2, &player2Audio, track2Area, track2Active, "Track 2");
-
 }
 
 void MainComponent::resized()
@@ -206,7 +207,8 @@ void MainComponent::mouseDown(const juce::MouseEvent& event)
             player2Audio.setPosition(newTime);
             if (event.mods.isRightButtonDown()) {
                 player2Audio.setLoopPoints(newTime, player2Audio.getLoopEnd());
-            } else if (event.mods.isMiddleButtonDown()) {
+            }
+            else if (event.mods.isMiddleButtonDown()) {
                 player2Audio.setLoopPoints(player2Audio.getLoopStart(), newTime);
             }
 
@@ -244,14 +246,15 @@ void MainComponent::mouseDown(const juce::MouseEvent& event)
             player1Audio.setPosition(newTime);
             if (event.mods.isRightButtonDown()) {
                 player1Audio.setLoopPoints(newTime, player1Audio.getLoopEnd());
-            } else if (event.mods.isMiddleButtonDown()) {
+            }
+            else if (event.mods.isMiddleButtonDown()) {
                 player1Audio.setLoopPoints(player1Audio.getLoopStart(), newTime);
             }
             if (wasPlayingBeforeSwitch)
             {
                 player1Audio.play();
             }
-                isDraggingPlayhead = true;
+            isDraggingPlayhead = true;
             activeTrackDragging = 1;
         }
         repaint();
@@ -265,9 +268,6 @@ void MainComponent::mouseDrag(const juce::MouseEvent& event)
     {
         auto area = getLocalBounds();
         auto waveformArea = area.removeFromTop(150);
-
-        bool wasPlaying1 = player1Audio.isPlaying();
-        bool wasPlaying2 = player2Audio.isPlaying();
 
         if (activeTrackDragging == 1)
         {
@@ -317,6 +317,7 @@ void MainComponent::updateMetadataDisplay(const juce::String& metadata, int trac
     }
     repaint();
 }
+
 void MainComponent::drawLoopRegion(juce::Graphics& g, juce::AudioThumbnail& thumbnail, juce::Rectangle<int> area, PlayerAudio* player)
 {
     if (player->isSegmentLooping() && thumbnail.getTotalLength() > 0.0)
@@ -327,8 +328,8 @@ void MainComponent::drawLoopRegion(juce::Graphics& g, juce::AudioThumbnail& thum
         double totalLength = thumbnail.getTotalLength();
 
         // Calculate loop region bounds
-        float startX = drawArea.getX() + (loopStart / totalLength) * drawArea.getWidth();
-        float endX = drawArea.getX() + (loopEnd / totalLength) * drawArea.getWidth();
+        float startX = (float)(drawArea.getX() + (loopStart / totalLength) * drawArea.getWidth());
+        float endX = (float)(drawArea.getX() + (loopEnd / totalLength) * drawArea.getWidth());
 
         // Draw loop region highlight
         g.setColour(juce::Colours::green.withAlpha(0.2f));
@@ -336,15 +337,16 @@ void MainComponent::drawLoopRegion(juce::Graphics& g, juce::AudioThumbnail& thum
 
         // Draw loop boundary lines
         g.setColour(juce::Colours::green);
-        g.drawLine(startX, drawArea.getY(), startX, drawArea.getBottom(), 2.0f);
-        g.drawLine(endX, drawArea.getY(), endX, drawArea.getBottom(), 2.0f);
+        g.drawLine(startX, (float)drawArea.getY(), startX, (float)drawArea.getBottom(), 2.0f);
+        g.drawLine(endX, (float)drawArea.getY(), endX, (float)drawArea.getBottom(), 2.0f);
 
         // Draw loop labels
-        g.setFont(juce::Font(10.0f, juce::Font::bold));
-        g.drawText("A", startX - 10, drawArea.getY() - 15, 20, 15, juce::Justification::centred);
-        g.drawText("B", endX - 10, drawArea.getY() - 15, 20, 15, juce::Justification::centred);
+        g.setFont(juce::Font(juce::FontOptions(10.0f, juce::Font::bold)));
+        g.drawText("A", (int)(startX - 10), drawArea.getY() - 15, 20, 15, juce::Justification::centred);
+        g.drawText("B", (int)(endX - 10), drawArea.getY() - 15, 20, 15, juce::Justification::centred);
     }
 }
+
 juce::PropertiesFile* MainComponent::getSettingsFile()
 {
     juce::PropertiesFile::Options options;
@@ -356,6 +358,7 @@ juce::PropertiesFile* MainComponent::getSettingsFile()
 
     return new juce::PropertiesFile(options);
 }
+
 void MainComponent::saveSession()
 {
     std::unique_ptr<juce::PropertiesFile> settings(getSettingsFile());
@@ -373,6 +376,7 @@ void MainComponent::saveSession()
     settings->setValue("lastActiveTrack", lastActiveTrack);
     settings->save();
 }
+
 void MainComponent::loadSession()
 {
     std::unique_ptr<juce::PropertiesFile> settings(getSettingsFile());
@@ -450,4 +454,46 @@ void MainComponent::loadSession()
 
         repaint();
     }
+}
+
+void MainComponent::loadPlaylistFile(const juce::File& file)
+{
+    juce::String metadata;
+    if (track1Active)
+    {
+        if (player1Audio.loadfile(file, metadata))
+        {
+            thumbnail1.setSource(new juce::FileInputSource(file));
+            updateMetadataDisplay(metadata, 1);
+            lastLoadedFile1 = file;
+            activePlayer = &player1Audio;
+        }
+    }
+    else
+    {
+        if (player2Audio.loadfile(file, metadata))
+        {
+            thumbnail2.setSource(new juce::FileInputSource(file));
+            updateMetadataDisplay(metadata, 2);
+            lastLoadedFile2 = file;
+            activePlayer = &player2Audio;
+        }
+    }
+    repaint();
+}
+
+void MainComponent::playNextInPlaylist()
+{
+    if (playlist.isEmpty() || currentPlaylistIndex < 0) return;
+    currentPlaylistIndex = (currentPlaylistIndex + 1) % playlist.size();
+    loadPlaylistFile(playlist[currentPlaylistIndex]);
+    activePlayer->play();
+}
+
+void MainComponent::playPreviousInPlaylist()
+{
+    if (playlist.isEmpty() || currentPlaylistIndex < 0) return;
+    currentPlaylistIndex = (currentPlaylistIndex - 1 + playlist.size()) % playlist.size();
+    loadPlaylistFile(playlist[currentPlaylistIndex]);
+    activePlayer->play();
 }

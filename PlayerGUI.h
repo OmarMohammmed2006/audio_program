@@ -115,6 +115,8 @@ private:
     ModernLookAndFeel customLookAndFeel;
 
     juce::TextButton loadButton{ "Load Files" };
+    juce::TextButton nextButton{ "Next" };
+    juce::TextButton previousButton{ "Previous" };
     juce::TextButton restartButton{ "Restart" };
     juce::TextButton playpauseButton{ "Play" };
     juce::TextButton gotostartbutton{ "Go To Start" };

@@ -21,6 +21,13 @@ public:
     void mouseDrag(const juce::MouseEvent& event) override;
     void mouseUp(const juce::MouseEvent& event) override;
 
+    void loadPlaylistFile(const juce::File& file);
+    void playNextInPlaylist();
+    void playPreviousInPlaylist();
+
+    juce::Array<juce::File> playlist;
+    int currentPlaylistIndex = -1;
+
 private:
     PlayerAudio player1Audio;
     PlayerAudio player2Audio;
