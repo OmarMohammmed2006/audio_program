@@ -39,6 +39,12 @@ private:
     bool isDraggingPlayhead = false;
     int activeTrackDragging = 0;
 
+    // Mixer controls
+    bool mixerMode = false;
+    float track1MixVolume = 0.7f;
+    float track2MixVolume = 0.7f;
+    juce::AudioBuffer<float> mixBuffer;
+
     void updateMetadataDisplay(const juce::String& metadata, int trackNumber);
     void drawLoopRegion(juce::Graphics& g, juce::AudioThumbnail& thumbnail, juce::Rectangle<int> area, PlayerAudio* player);
     void drawWaveformMarkers(juce::Graphics& g, juce::AudioThumbnail& thumbnail, juce::Rectangle<int> area, const std::vector<std::pair<double, juce::String>>& markers);
@@ -52,5 +58,6 @@ private:
     bool wasPlaying1 = false;
     bool wasPlaying2 = false;
     int lastActiveTrack = 1;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

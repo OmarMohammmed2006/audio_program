@@ -18,9 +18,9 @@ public:
     }
 
     void drawButtonBackground(juce::Graphics& g, juce::Button& button,
-                             const juce::Colour& backgroundColour,
-                             bool shouldDrawButtonAsHighlighted,
-                             bool shouldDrawButtonAsDown) override
+        const juce::Colour& backgroundColour,
+        bool shouldDrawButtonAsHighlighted,
+        bool shouldDrawButtonAsDown) override
     {
         auto bounds = button.getLocalBounds().toFloat().reduced(1.0f);
         const float cornerSize = 12.0f;
@@ -48,8 +48,8 @@ public:
     }
 
     void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
-                     float sliderPos, float minSliderPos, float maxSliderPos,
-                     const juce::Slider::SliderStyle style, juce::Slider& slider) override
+        float sliderPos, float minSliderPos, float maxSliderPos,
+        const juce::Slider::SliderStyle style, juce::Slider& slider) override
     {
         if (style == juce::Slider::LinearHorizontal)
         {
@@ -96,9 +96,9 @@ public:
 };
 
 class PlaylistComponent : public juce::Component,
-                         public juce::TableListBoxModel,
-                         public juce::Button::Listener,
-                         public juce::TextEditor::Listener
+    public juce::TableListBoxModel,
+    public juce::Button::Listener,
+    public juce::TextEditor::Listener
 {
 public:
     PlaylistComponent();
@@ -129,7 +129,7 @@ private:
 
     juce::TableListBox table;
     juce::TextEditor searchBox;
-    juce::TextButton addButton{"+"};
+    juce::TextButton addButton{ "+" };
 
     std::vector<PlaylistItem> playlistItems;
     std::vector<PlaylistItem> filteredItems;
@@ -157,8 +157,16 @@ public:
         onFileLoaded = callback;
     }
 
+    void setMixerCallback(std::function<void(bool, float, float)> callback) {
+        onMixerChanged = callback;
+    }
+
+    void setMixerPlayPauseCallback(std::function<void()> callback) {
+        onMixerPlayPauseRequested = callback;
+    }
+
     int getNumRows() override;
-    void paintListBoxItem(int rowNumber, juce::Graphics& g,int width, int height, bool rowIsSelected) override;
+    void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
     void listBoxItemDoubleClicked(int row, const juce::MouseEvent&) override;
     void deleteKeyPressed(int lastRowSelected) override;
     void updateMarkersList();
@@ -191,6 +199,14 @@ private:
     juce::TextButton removeFadesButton{ "Remove Fades" };
     juce::Label fadeStatusLabel;
 
+    // Mixer controls
+    juce::TextButton mixerToggleButton{ "Mixer: Off" };
+    juce::Slider track1MixSlider;
+    juce::Slider track2MixSlider;
+    juce::Label track1MixLabel;
+    juce::Label track2MixLabel;
+    bool mixerEnabled = false;
+
     juce::Slider volumeSlider;
     juce::Slider speedSlider;
     juce::Label volumeLabel;
@@ -200,6 +216,8 @@ private:
 
     std::unique_ptr<juce::FileChooser> fileChooser;
     std::function<void(juce::File)> onFileLoaded;
+    std::function<void(bool, float, float)> onMixerChanged;
+    std::function<void()> onMixerPlayPauseRequested;
     juce::ListBox markersList;
 
     juce::TextButton addMarkerButton{ "Add Marker" };
@@ -210,6 +228,7 @@ private:
     void updatePlayPauseButton();
     void updateLoopLabels();
     void updateFadeStatus();
+    void updateMixerControls();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerGUI)
 };
