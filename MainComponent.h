@@ -1,7 +1,9 @@
 #pragma once
-
 #include <JuceHeader.h>
 #include "PlayerGUI.h"
+#include "WaveformDisplay.h"
+#include "SessionManager.h"
+#include "AudioMixer.h"
 
 class MainComponent : public juce::AudioAppComponent, public juce::Timer
 {
@@ -17,47 +19,42 @@ public:
     void resized() override;
     void timerCallback() override;
 
-    void mouseDown(const juce::MouseEvent& event) override;
-    void mouseDrag(const juce::MouseEvent& event) override;
-    void mouseUp(const juce::MouseEvent& event) override;
-
 private:
     PlayerAudio player1Audio;
     PlayerAudio player2Audio;
+    PlayerAudio* activePlayer;
+
     PlayerGUI controls;
+    std::unique_ptr<WaveformDisplay> waveform1;
+    std::unique_ptr<WaveformDisplay> waveform2;
+    juce::Label metadataLabel1;
+    juce::Label metadataLabel2;
 
     juce::AudioFormatManager formatManager;
     juce::AudioThumbnailCache thumbnailCache;
     juce::AudioThumbnail thumbnail1;
     juce::AudioThumbnail thumbnail2;
-    juce::Label metadataLabel1;
-    juce::Label metadataLabel2;
 
-    PlayerAudio* activePlayer;
+    SessionManager sessionManager;
+    AudioMixer mixer;
+
+    juce::Image backgroundImage;
+
     bool track1Active = true;
-    bool track2Active = false;
-    bool isDraggingPlayhead = false;
-    int activeTrackDragging = 0;
-
-    // Mixer controls
-    bool mixerMode = false;
-    float track1MixVolume = 0.7f;
-    float track2MixVolume = 0.7f;
-    juce::AudioBuffer<float> mixBuffer;
-
-    void updateMetadataDisplay(const juce::String& metadata, int trackNumber);
-    void drawLoopRegion(juce::Graphics& g, juce::AudioThumbnail& thumbnail, juce::Rectangle<int> area, PlayerAudio* player);
-    void drawWaveformMarkers(juce::Graphics& g, juce::AudioThumbnail& thumbnail, juce::Rectangle<int> area, const std::vector<std::pair<double, juce::String>>& markers);
-    void saveSession();
-    void loadSession();
-    juce::PropertiesFile* getSettingsFile();
     juce::File lastLoadedFile1;
     juce::File lastLoadedFile2;
-    double lastPosition1 = 0.0;
-    double lastPosition2 = 0.0;
-    bool wasPlaying1 = false;
-    bool wasPlaying2 = false;
-    int lastActiveTrack = 1;
+    int saveCounter = 0;
+
+    void setupWaveformDisplays();
+    void setupControls();
+    void switchToTrack(int trackNumber);
+    void handleFileLoaded(juce::File file);
+    void handleMixerChanged(bool enabled, float vol1, float vol2);
+    void handleMixerPlayPause();
+    void updateMetadataDisplay(const juce::String& metadata, int trackNumber);
+    void saveCurrentSession();
+    void loadPreviousSession();
+    void loadBackgroundImage();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

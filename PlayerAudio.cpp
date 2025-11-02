@@ -1,6 +1,7 @@
 #include "PlayerAudio.h"
 
-PlayerAudio::PlayerAudio() : resamplerSource(&transportSource, false)
+PlayerAudio::PlayerAudio()
+    : resamplerSource(&transportSource, false)
 {
     formatManager.registerBasicFormats();
 }
@@ -21,10 +22,12 @@ void PlayerAudio::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferTo
     checkLoopBoundaries();
     resamplerSource.getNextAudioBlock(bufferToFill);
     checkLoopBoundaries();
-    if (hasFadeIn || hasFadeOut)
+
+    if (fadeInEnabled || fadeOutEnabled)
     {
         double currentTime = getPosition();
         double fadeGain = calculateFadeGain(currentTime);
+
         for (int channel = 0; channel < bufferToFill.buffer->getNumChannels(); ++channel)
         {
             float* channelData = bufferToFill.buffer->getWritePointer(channel, bufferToFill.startSample);
@@ -35,6 +38,7 @@ void PlayerAudio::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferTo
             }
         }
     }
+
     checkLoopBoundaries();
 }
 
@@ -46,41 +50,44 @@ void PlayerAudio::releaseResources()
 
 bool PlayerAudio::loadfile(const juce::File& file, juce::String& metadata)
 {
-    if (file.existsAsFile())
+    if (!file.existsAsFile())
     {
-        if (auto* reader = formatManager.createReaderFor(file))
-        {
-            transportSource.stop();
-            transportSource.setSource(nullptr);
-            readerSource.reset();
+        metadata = "Error: File does not exist";
+        return false;
+    }
 
-            readerSource = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
-            transportSource.setSource(readerSource.get(), 0, nullptr, reader->sampleRate);
-            setSpeed(1.0f);
-
-            juce::StringArray metadataLines;
-            auto& metadataValues = reader->metadataValues;
-
-            metadataLines.add("File: " + file.getFileName());
-            metadataLines.add("Duration: " + juce::String(transportSource.getLengthInSeconds(), 1) + " seconds");
-
-            static const juce::String emptyString;
-            const juce::String title = metadataValues.getValue("title", emptyString);
-            const juce::String artist = metadataValues.getValue("artist", emptyString);
-            const juce::String album = metadataValues.getValue("album", emptyString);
-
-            if (!title.isEmpty()) metadataLines.add("Title: " + title);
-            if (!artist.isEmpty()) metadataLines.add("Artist: " + artist);
-            if (!album.isEmpty()) metadataLines.add("Album: " + album);
-
-            metadata = metadataLines.joinIntoString("\n");
-            return true;
-        }
+    auto* reader = formatManager.createReaderFor(file);
+    if (!reader)
+    {
         metadata = "Error: Could not read file";
         return false;
     }
-    metadata = "Error: File does not exist";
-    return false;
+
+    transportSource.stop();
+    transportSource.setSource(nullptr);
+    readerSource.reset();
+
+    readerSource = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
+    transportSource.setSource(readerSource.get(), 0, nullptr, reader->sampleRate);
+    setSpeed(1.0f);
+
+    juce::StringArray metadataLines;
+    auto& metadataValues = reader->metadataValues;
+
+    metadataLines.add("File: " + file.getFileName());
+    metadataLines.add("Duration: " + juce::String(transportSource.getLengthInSeconds(), 1) + " seconds");
+
+    static const juce::String emptyString;
+    const juce::String title = metadataValues.getValue("title", emptyString);
+    const juce::String artist = metadataValues.getValue("artist", emptyString);
+    const juce::String album = metadataValues.getValue("album", emptyString);
+
+    if (!title.isEmpty()) metadataLines.add("Title: " + title);
+    if (!artist.isEmpty()) metadataLines.add("Artist: " + artist);
+    if (!album.isEmpty()) metadataLines.add("Album: " + album);
+
+    metadata = metadataLines.joinIntoString("\n");
+    return true;
 }
 
 void PlayerAudio::play()
@@ -93,23 +100,29 @@ void PlayerAudio::pause()
     transportSource.stop();
 }
 
-void PlayerAudio::mute() {
-    isMuted = !isMuted;
-    if (isMuted) {
+void PlayerAudio::mute()
+{
+    muted = !muted;
+
+    if (muted)
+    {
         previousVolume = currentGain;
         setGain(0.0f);
-    } else {
+    }
+    else
+    {
         setGain(previousVolume);
     }
 }
 
 void PlayerAudio::setGain(float gain)
 {
-    transportSource.setGain(gain);
-    currentGain = gain;
+    currentGain = juce::jlimit(0.0f, 1.0f, gain);
+    transportSource.setGain(currentGain);
 
-    if (isMuted && gain > 0.0f) {
-        isMuted = false;
+    if (muted && gain > 0.0f)
+    {
+        muted = false;
     }
 }
 
@@ -130,20 +143,22 @@ double PlayerAudio::getLength() const
 
 void PlayerAudio::setlooping(bool shouldloop)
 {
-    isloopingenabled = shouldloop;
-    if (readerSource) readerSource->setLooping(shouldloop);
+    loopingEnabled = shouldloop;
+    if (readerSource)
+        readerSource->setLooping(shouldloop);
 }
 
-void PlayerAudio::setSpeed(float newSpeed) {
+void PlayerAudio::setSpeed(float newSpeed)
+{
     newSpeed = juce::jlimit(0.25f, 4.0f, newSpeed);
 
     if (currentSpeed != newSpeed)
     {
         currentSpeed = newSpeed;
-        double resamplingRatio = currentSpeed;
-        resamplerSource.setResamplingRatio(resamplingRatio);
+        resamplerSource.setResamplingRatio(currentSpeed);
     }
 }
+
 void PlayerAudio::setLoopPoints(double startTime, double endTime)
 {
     loopStartTime = juce::jmax(0.0, startTime);
@@ -157,24 +172,26 @@ void PlayerAudio::setLoopPoints(double startTime, double endTime)
             loopEndTime = getLength();
             if (loopStartTime >= loopEndTime)
             {
-                isSegmentLoopEnabled = false;
+                segmentLoopEnabled = false;
                 return;
             }
         }
     }
 
-    isSegmentLoopEnabled = true;
+    segmentLoopEnabled = true;
 }
 
 void PlayerAudio::clearLoopPoints()
 {
-    isSegmentLoopEnabled = false;
+    segmentLoopEnabled = false;
     loopStartTime = 0.0;
     loopEndTime = getLength();
 }
+
 void PlayerAudio::checkLoopBoundaries()
 {
-    if (!isSegmentLoopEnabled || !readerSource) return;
+    if (!segmentLoopEnabled || !readerSource)
+        return;
 
     double currentPos = getPosition();
 
@@ -185,39 +202,45 @@ void PlayerAudio::checkLoopBoundaries()
 
     previousPosition = currentPos;
 }
+
 void PlayerAudio::applyFadeIn()
 {
     double totalLength = getLength();
     fadeInDuration = 0.1 * totalLength;
-    hasFadeIn = true;
+    fadeInEnabled = true;
 }
+
 void PlayerAudio::applyFadeOut()
 {
     double totalLength = getLength();
     fadeOutDuration = 0.1 * totalLength;
-    hasFadeOut = true;
+    fadeOutEnabled = true;
 }
+
 void PlayerAudio::removeFades()
 {
-    hasFadeIn = false;
-    hasFadeOut = false;
+    fadeInEnabled = false;
+    fadeOutEnabled = false;
 }
-double PlayerAudio::calculateFadeGain(double currentTime)
+
+double PlayerAudio::calculateFadeGain(double currentTime) const
 {
     double totalLength = getLength();
-    double gain = 1.0f;
-    if (hasFadeIn && currentTime < fadeInDuration && fadeInDuration > 0.0)
+    double gain = 1.0;
+
+    if (fadeInEnabled && currentTime < fadeInDuration && fadeInDuration > 0.0)
     {
         gain *= (currentTime / fadeInDuration);
     }
-    if (hasFadeOut && currentTime > (totalLength - fadeOutDuration) && fadeOutDuration > 0.0)
+
+    if (fadeOutEnabled && currentTime > (totalLength - fadeOutDuration) && fadeOutDuration > 0.0)
     {
         double fadeOutStart = totalLength - fadeOutDuration;
         double fadeProgress = (currentTime - fadeOutStart) / fadeOutDuration;
         gain *= (1.0 - fadeProgress);
     }
 
-    return juce::jlimit(0.0f, 1.0f, static_cast<float>(gain));
+    return juce::jlimit(0.0, 1.0, gain);
 }
 
 void PlayerAudio::addMarker(double time, const juce::String& name)
@@ -225,7 +248,8 @@ void PlayerAudio::addMarker(double time, const juce::String& name)
     time = juce::jlimit(0.0, getLength(), time);
 
     juce::String markerName = name;
-    if (markerName.isEmpty()) {
+    if (markerName.isEmpty())
+    {
         markerName = "Marker " + juce::String(markers.size() + 1);
     }
 
@@ -237,7 +261,8 @@ void PlayerAudio::addMarker(double time, const juce::String& name)
 
 void PlayerAudio::removeMarker(int index)
 {
-    if (index >= 0 && index < markers.size()) {
+    if (index >= 0 && index < static_cast<int>(markers.size()))
+    {
         markers.erase(markers.begin() + index);
     }
 }
@@ -249,7 +274,8 @@ void PlayerAudio::removeAllMarkers()
 
 void PlayerAudio::jumpToMarker(int index)
 {
-    if (index >= 0 && index < markers.size()) {
+    if (index >= 0 && index < static_cast<int>(markers.size()))
+    {
         setPosition(markers[index].first);
     }
 }

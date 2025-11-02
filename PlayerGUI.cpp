@@ -1,199 +1,80 @@
 #include "PlayerGUI.h"
 
-PlaylistComponent::PlaylistComponent()
+void ModernLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button,
+    const juce::Colour& backgroundColour,
+    bool shouldDrawButtonAsHighlighted,
+    bool shouldDrawButtonAsDown)
 {
-    addAndMakeVisible(table);
-    addAndMakeVisible(searchBox);
-    addAndMakeVisible(addButton);
+    auto bounds = button.getLocalBounds().toFloat().reduced(1.0f);
+    const float cornerSize = 12.0f;
 
-    table.setModel(this);
-    table.getHeader().addColumn("Title", 1, 300);
-    table.getHeader().addColumn("Duration", 2, 100);
-    table.getHeader().addColumn("Load", 3, 100);
-    table.getHeader().addColumn("Remove", 4, 100);
+    juce::Colour baseColour = backgroundColour;
 
-    table.setAutoSizeMenuOptionShown(true);
-    table.getHeader().setStretchToFitActive(true);
+    if (shouldDrawButtonAsDown)
+        baseColour = juce::Colours::white.withAlpha(0.4f);
+    else if (shouldDrawButtonAsHighlighted)
+        baseColour = juce::Colours::white.withAlpha(0.2f);
 
-    searchBox.setTextToShowWhenEmpty("Search playlist...", juce::Colours::white.withAlpha(0.5f));
-    searchBox.addListener(this);
+    juce::ColourGradient gradient(
+        baseColour.brighter(shouldDrawButtonAsHighlighted ? 0.4f : 0.1f),
+        bounds.getX(), bounds.getY(),
+        baseColour.darker(0.1f),
+        bounds.getX(), bounds.getBottom(),
+        false
+    );
 
-    addButton.addListener(this);
-    addButton.setTooltip("Add files to playlist");
+    g.setGradientFill(gradient);
+    g.fillRoundedRectangle(bounds, cornerSize);
+
+    g.setColour(juce::Colours::white.withAlpha(0.6f));
+    g.drawRoundedRectangle(bounds, cornerSize, 1.5f);
 }
 
-void PlaylistComponent::resized()
+void ModernLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
+    float sliderPos, float minSliderPos, float maxSliderPos,
+    const juce::Slider::SliderStyle style, juce::Slider& slider)
 {
-    auto area = getLocalBounds();
-    auto searchArea = area.removeFromTop(30);
-
-    searchBox.setBounds(searchArea.removeFromLeft(area.getWidth() - 40).reduced(2));
-    addButton.setBounds(searchArea.reduced(2));
-
-    table.setBounds(area);
-}
-
-int PlaylistComponent::getNumRows()
-{
-    return filteredItems.size();
-}
-
-void PlaylistComponent::paintRowBackground(juce::Graphics& g, int rowNumber, int width, int height, bool rowIsSelected)
-{
-    auto colour = rowIsSelected ? juce::Colours::lightblue.withAlpha(0.3f)
-        : (rowNumber % 2 == 0 ? juce::Colours::white.withAlpha(0.1f)
-            : juce::Colours::white.withAlpha(0.05f));
-    g.setColour(colour);
-    g.fillRect(0, 0, width, height);
-}
-
-void PlaylistComponent::paintCell(juce::Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected)
-{
-    if (rowNumber >= filteredItems.size()) return;
-
-    auto& item = filteredItems[rowNumber];
-
-    g.setColour(juce::Colours::white);
-    g.setFont(14.0f);
-
-    if (columnId == 1)
+    if (style == juce::Slider::LinearHorizontal)
     {
-        g.drawText(item.title, 5, 0, width - 5, height, juce::Justification::centredLeft);
-    }
-    else if (columnId == 2)
-    {
-        g.drawText(item.duration, 5, 0, width - 5, height, juce::Justification::centredLeft);
-    }
-}
+        auto trackHeight = 6.0f;
+        auto trackBounds = slider.getLocalBounds().toFloat().reduced(1.0f);
+        auto trackY = trackBounds.getCentreY() - trackHeight * 0.5f;
 
-juce::Component* PlaylistComponent::refreshComponentForCell(int rowNumber, int columnId, bool isRowSelected, Component* existingComponentToUpdate)
-{
-    if (rowNumber >= filteredItems.size()) return existingComponentToUpdate;
+        g.setColour(juce::Colours::black.withAlpha(0.4f));
+        g.fillRoundedRectangle(trackBounds.getX(), trackY, trackBounds.getWidth(), trackHeight, trackHeight * 0.5f);
 
-    if (columnId == 3 || columnId == 4)
-    {
-        juce::TextButton* button = static_cast<juce::TextButton*>(existingComponentToUpdate);
-
-        if (button == nullptr)
-            button = new juce::TextButton();
-
-        if (columnId == 3)
+        if (slider.isEnabled())
         {
-            button->setButtonText("Load");
-            button->setColour(juce::TextButton::buttonColourId, juce::Colours::blue.withAlpha(0.7f));
-        }
-        else if (columnId == 4)
-        {
-            button->setButtonText("X");
-            button->setColour(juce::TextButton::buttonColourId, juce::Colours::red.withAlpha(0.7f));
+            g.setColour(juce::Colours::white.withAlpha(0.8f));
+            g.fillRoundedRectangle(trackBounds.getX(), trackY, sliderPos - trackBounds.getX(), trackHeight, trackHeight * 0.5f);
         }
 
-        button->addListener(this);
-        button->setComponentID(juce::String(rowNumber) + "_" + juce::String(columnId));
+        auto thumbSize = 20.0f;
+        juce::Point<float> thumbPoint(sliderPos, trackBounds.getCentreY());
 
-        return button;
-    }
+        juce::ColourGradient thumbGradient(
+            juce::Colours::white.withAlpha(0.9f),
+            thumbPoint.x - thumbSize * 0.5f, thumbPoint.y - thumbSize * 0.5f,
+            juce::Colours::white.withAlpha(0.6f),
+            thumbPoint.x + thumbSize * 0.5f, thumbPoint.y + thumbSize * 0.5f,
+            false
+        );
 
-    return existingComponentToUpdate;
-}
+        g.setGradientFill(thumbGradient);
+        g.fillEllipse(juce::Rectangle<float>(thumbSize, thumbSize).withCentre(thumbPoint));
 
-void PlaylistComponent::buttonClicked(juce::Button* button)
-{
-    auto id = button->getComponentID();
-    auto parts = juce::StringArray::fromTokens(id, "_", "");
-
-    if (parts.size() == 2)
-    {
-        int row = parts[0].getIntValue();
-        int column = parts[1].getIntValue();
-
-        if (row < filteredItems.size())
-        {
-            auto& item = filteredItems[row];
-
-            if (column == 3 && onTrackLoadRequested)
-            {
-                onTrackLoadRequested(item.file);
-            }
-            else if (column == 4)
-            {
-                auto it = std::find_if(playlistItems.begin(), playlistItems.end(),
-                    [&](const PlaylistItem& playlistItem) { return playlistItem.file == item.file; });
-
-                if (it != playlistItems.end())
-                {
-                    playlistItems.erase(it);
-                    updateFilter();
-                    table.updateContent();
-                }
-            }
-        }
-    }
-    else if (button == &addButton)
-    {
-        fileChooser = std::make_unique<juce::FileChooser>("Select audio files...", juce::File{}, "*.wav;*.mp3;*.aiff");
-
-        fileChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectMultipleItems,
-            [this](const juce::FileChooser& fc)
-            {
-                auto results = fc.getResults();
-                for (auto& file : results)
-                {
-                    addFileToPlaylist(file);
-                }
-                table.updateContent();
-            });
-    }
-}
-
-void PlaylistComponent::textEditorReturnKeyPressed(juce::TextEditor& editor)
-{
-    updateFilter();
-    table.updateContent();
-}
-
-void PlaylistComponent::addFileToPlaylist(const juce::File& file)
-{
-    PlaylistItem item;
-    item.file = file;
-    item.title = file.getFileNameWithoutExtension();
-    item.duration = getDurationString(file);
-
-    playlistItems.push_back(item);
-    updateFilter();
-}
-
-void PlaylistComponent::clearPlaylist()
-{
-    playlistItems.clear();
-    updateFilter();
-    table.updateContent();
-}
-
-void PlaylistComponent::updateFilter()
-{
-    auto searchText = searchBox.getText().toLowerCase();
-
-    if (searchText.isEmpty())
-    {
-        filteredItems = playlistItems;
+        g.setColour(juce::Colours::white.withAlpha(0.8f));
+        g.drawEllipse(juce::Rectangle<float>(thumbSize, thumbSize).withCentre(thumbPoint), 1.5f);
     }
     else
     {
-        filteredItems.clear();
-        for (auto& item : playlistItems)
-        {
-            if (item.title.toLowerCase().contains(searchText))
-            {
-                filteredItems.push_back(item);
-            }
-        }
+        LookAndFeel_V4::drawLinearSlider(g, x, y, width, height, sliderPos, minSliderPos, maxSliderPos, style, slider);
     }
 }
 
-juce::String PlaylistComponent::getDurationString(const juce::File& file)
+juce::Font ModernLookAndFeel::getTextButtonFont(juce::TextButton&, int buttonHeight)
 {
-    return "0:00";
+    return juce::Font(14.0f, juce::Font::bold);
 }
 
 PlayerGUI::PlayerGUI()
@@ -204,102 +85,13 @@ PlayerGUI::PlayerGUI()
     playlist->onTrackLoadRequested = [this](juce::File file) {
         if (onFileLoaded)
             onFileLoaded(file);
-        };
+    };
 
-    auto setupModernButton = [this](juce::TextButton& button) {
-        button.setMouseCursor(juce::MouseCursor::PointingHandCursor);
-        button.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
-        button.setColour(juce::TextButton::buttonOnColourId, juce::Colours::white.withAlpha(0.3f));
-        button.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
-        button.setColour(juce::TextButton::textColourOffId, juce::Colours::white.withAlpha(0.9f));
-        button.setLookAndFeel(&customLookAndFeel);
-        };
+    setupButtons();
+    setupSliders();
+    setupLabels();
 
-    for (auto* btn : { &loadButton, &restartButton, &playpauseButton,
-        &skipBackButton, &skipForwardButton, &mute_button, &loopbutton,&gotostartbutton,&gotoendbutton,
-        &speedHalfButton, &speedNormalButton, &speedDoubleButton, &speedQuadButton, &setPointAButton, &setPointBButton,
-        &clearLoopPointsButton, &toggleSegmentLoopButton, &fadeInButton, &fadeOutButton, &removeFadesButton,
-        &addMarkerButton, &clearMarkersButton, &mixerToggleButton })
-    {
-        addAndMakeVisible(btn);
-        btn->addListener(this);
-        setupModernButton(*btn);
-    }
-
-    fadeStatusLabel.setText("Fades: None", juce::dontSendNotification);
-    fadeStatusLabel.setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.9f));
-    fadeStatusLabel.setJustificationType(juce::Justification::centredLeft);
-    fadeStatusLabel.setFont(juce::Font(12.0f, juce::Font::bold));
-    addAndMakeVisible(fadeStatusLabel);
-
-    loopStartLabel.setText("A: --:--", juce::dontSendNotification);
-    loopEndLabel.setText("B: --:--", juce::dontSendNotification);
-    loopStartLabel.setColour(juce::Label::textColourId, juce::Colours::yellow.withAlpha(0.9f));
-    loopEndLabel.setColour(juce::Label::textColourId, juce::Colours::yellow.withAlpha(0.9f));
-    loopStartLabel.setJustificationType(juce::Justification::centredLeft);
-    loopEndLabel.setJustificationType(juce::Justification::centredRight);
-    loopStartLabel.setFont(juce::Font(12.0f, juce::Font::bold));
-    loopEndLabel.setFont(juce::Font(12.0f, juce::Font::bold));
-    addAndMakeVisible(loopStartLabel);
-    addAndMakeVisible(loopEndLabel);
-
-    // Mixer sliders
-    track1MixSlider.setRange(0.0, 1.0, 0.01);
-    track1MixSlider.setValue(0.7);
-    track1MixSlider.addListener(this);
-    track1MixSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-    track1MixSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    track1MixSlider.setLookAndFeel(&customLookAndFeel);
-    addAndMakeVisible(track1MixSlider);
-
-    track2MixSlider.setRange(0.0, 1.0, 0.01);
-    track2MixSlider.setValue(0.7);
-    track2MixSlider.addListener(this);
-    track2MixSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-    track2MixSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    track2MixSlider.setLookAndFeel(&customLookAndFeel);
-    addAndMakeVisible(track2MixSlider);
-
-    track1MixLabel.setText("Track 1: 70%", juce::dontSendNotification);
-    track1MixLabel.setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.9f));
-    track1MixLabel.setJustificationType(juce::Justification::centredLeft);
-    track1MixLabel.setFont(juce::Font(12.0f, juce::Font::bold));
-    addAndMakeVisible(track1MixLabel);
-
-    track2MixLabel.setText("Track 2: 70%", juce::dontSendNotification);
-    track2MixLabel.setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.9f));
-    track2MixLabel.setJustificationType(juce::Justification::centredLeft);
-    track2MixLabel.setFont(juce::Font(12.0f, juce::Font::bold));
-    addAndMakeVisible(track2MixLabel);
-
-    volumeSlider.setRange(0.0, 1.0, 0.01);
-    volumeSlider.setValue(0.5);
-    volumeSlider.addListener(this);
-    volumeSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-    volumeSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    volumeSlider.setLookAndFeel(&customLookAndFeel);
-    addAndMakeVisible(volumeSlider);
-
-    volumeLabel.setText("Volume: 50%", juce::dontSendNotification);
-    volumeLabel.setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.9f));
-    volumeLabel.setJustificationType(juce::Justification::centredLeft);
-    volumeLabel.setFont(juce::Font(14.0f, juce::Font::bold));
-    addAndMakeVisible(volumeLabel);
-
-    speedSlider.setRange(0.25, 4.0, 0.1);
-    speedSlider.setValue(1.0);
-    speedSlider.addListener(this);
-    speedSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-    speedSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    speedSlider.setLookAndFeel(&customLookAndFeel);
-    addAndMakeVisible(speedSlider);
-
-    speedLabel.setText("Speed: 1.0x", juce::dontSendNotification);
-    speedLabel.setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.9f));
-    speedLabel.setJustificationType(juce::Justification::centredLeft);
-    speedLabel.setFont(juce::Font(14.0f, juce::Font::bold));
-    addAndMakeVisible(speedLabel);
-
+    markersList.setModel(this);
     markersList.setColour(juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
     markersList.setColour(juce::ListBox::outlineColourId, juce::Colours::white.withAlpha(0.5f));
     markersList.setOutlineThickness(1);
@@ -309,18 +101,88 @@ PlayerGUI::PlayerGUI()
     updateMixerControls();
 }
 
+void PlayerGUI::setupButtons()
+{
+    auto setupModernButton = [this](juce::TextButton& button) {
+        button.setMouseCursor(juce::MouseCursor::PointingHandCursor);
+        button.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
+        button.setColour(juce::TextButton::buttonOnColourId, juce::Colours::white.withAlpha(0.3f));
+        button.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+        button.setColour(juce::TextButton::textColourOffId, juce::Colours::white.withAlpha(0.9f));
+        button.setLookAndFeel(&customLookAndFeel);
+        addAndMakeVisible(&button);
+        button.addListener(this);
+    };
+
+    for (auto* btn : { &loadButton, &restartButton, &playpauseButton,
+        &skipBackButton, &skipForwardButton, &mute_button, &loopbutton,
+        &gotostartbutton, &gotoendbutton, &speedHalfButton, &speedNormalButton,
+        &speedDoubleButton, &speedQuadButton, &setPointAButton, &setPointBButton,
+        &clearLoopPointsButton, &toggleSegmentLoopButton, &fadeInButton,
+        &fadeOutButton, &removeFadesButton, &addMarkerButton, &clearMarkersButton,
+        &mixerToggleButton })
+    {
+        setupModernButton(*btn);
+    }
+}
+
+void PlayerGUI::setupSliders()
+{
+    auto setupSlider = [this](juce::Slider& slider, double min, double max, double initial) {
+        slider.setRange(min, max, 0.01);
+        slider.setValue(initial);
+        slider.addListener(this);
+        slider.setSliderStyle(juce::Slider::LinearHorizontal);
+        slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        slider.setLookAndFeel(&customLookAndFeel);
+        addAndMakeVisible(&slider);
+    };
+
+    setupSlider(volumeSlider, 0.0, 1.0, 0.5);
+    setupSlider(speedSlider, 0.25, 4.0, 1.0);
+    setupSlider(track1MixSlider, 0.0, 1.0, 0.7);
+    setupSlider(track2MixSlider, 0.0, 1.0, 0.7);
+}
+
+void PlayerGUI::setupLabels()
+{
+    auto setupLabel = [this](juce::Label& label, const juce::String& text, juce::Colour colour) {
+        label.setText(text, juce::dontSendNotification);
+        label.setColour(juce::Label::textColourId, colour);
+        label.setJustificationType(juce::Justification::centredLeft);
+        label.setFont(juce::Font(12.0f, juce::Font::bold));
+        addAndMakeVisible(&label);
+    };
+
+    setupLabel(volumeLabel, "Volume: 50%", juce::Colours::white.withAlpha(0.9f));
+    setupLabel(speedLabel, "Speed: 1.0x", juce::Colours::white.withAlpha(0.9f));
+    setupLabel(fadeStatusLabel, "Fades: None", juce::Colours::white.withAlpha(0.9f));
+    setupLabel(loopStartLabel, "A: --:--", juce::Colours::yellow.withAlpha(0.9f));
+    setupLabel(loopEndLabel, "B: --:--", juce::Colours::yellow.withAlpha(0.9f));
+    setupLabel(track1MixLabel, "Track 1: 70%", juce::Colours::white.withAlpha(0.9f));
+    setupLabel(track2MixLabel, "Track 2: 70%", juce::Colours::white.withAlpha(0.9f));
+
+    loopEndLabel.setJustificationType(juce::Justification::centredRight);
+}
+
 PlayerGUI::~PlayerGUI()
 {
+    markersList.setModel(nullptr);
+
     for (auto* btn : { &loadButton, &restartButton, &playpauseButton,
-        &skipBackButton, &skipForwardButton, &mute_button, &loopbutton,&gotostartbutton,&gotoendbutton,
-        &speedHalfButton, &speedNormalButton, &speedDoubleButton, &speedQuadButton, &addMarkerButton, &clearMarkersButton, &mixerToggleButton })
+        &skipBackButton, &skipForwardButton, &mute_button, &loopbutton,
+        &gotostartbutton, &gotoendbutton, &speedHalfButton, &speedNormalButton,
+        &speedDoubleButton, &speedQuadButton, &addMarkerButton, &clearMarkersButton,
+        &mixerToggleButton })
     {
         btn->setLookAndFeel(nullptr);
     }
+
     volumeSlider.setLookAndFeel(nullptr);
     speedSlider.setLookAndFeel(nullptr);
     track1MixSlider.setLookAndFeel(nullptr);
     track2MixSlider.setLookAndFeel(nullptr);
+
     playlist.reset();
 }
 
@@ -410,7 +272,6 @@ void PlayerGUI::resized()
 
     markersList.setBounds(leftBox.reduced(2));
 
-    // Mixer controls in right box
     if (mixerEnabled)
     {
         auto mixerArea = rightBox.removeFromTop(mixerHeight);
@@ -517,7 +378,6 @@ void PlayerGUI::buttonClicked(juce::Button* button)
     {
         if (mixerEnabled)
         {
-            // In mixer mode, we don't use connectedPlayer - notify MainComponent to handle both
             if (onMixerPlayPauseRequested)
             {
                 onMixerPlayPauseRequested();
@@ -554,7 +414,7 @@ void PlayerGUI::buttonClicked(juce::Button* button)
     else if (button == &mute_button)
     {
         connectedPlayer->mute();
-        if (connectedPlayer->getMuteState()) {
+        if (connectedPlayer->isMuted()) {
             mute_button.setButtonText("Unmute");
             volumeSlider.setValue(0.0);
         }
@@ -752,7 +612,6 @@ void PlayerGUI::updatePlayPauseButton()
 {
     if (mixerEnabled)
     {
-        // Check if either track is playing in mixer mode
         playpauseButton.setButtonText("|| Pause / > Play");
         playpauseButton.repaint();
         return;
@@ -771,7 +630,31 @@ void PlayerGUI::updatePlayPauseButton()
 void PlayerGUI::connectToPlayer(PlayerAudio* player)
 {
     connectedPlayer = player;
+    refreshUI();
+}
+
+void PlayerGUI::refreshUI()
+{
+    if (!connectedPlayer) return;
+
     updatePlayPauseButton();
+    updateLoopLabels();
+    updateFadeStatus();
+    updateMarkersList();
+
+    volumeSlider.setValue(connectedPlayer->getGain(), juce::dontSendNotification);
+    volumeLabel.setText("Volume: " + juce::String(static_cast<int>(connectedPlayer->getGain() * 100)) + "%",
+                       juce::dontSendNotification);
+
+    speedSlider.setValue(connectedPlayer->getSpeed(), juce::dontSendNotification);
+    speedLabel.setText("Speed: " + juce::String(connectedPlayer->getSpeed(), 1) + "x",
+                      juce::dontSendNotification);
+
+    mute_button.setButtonText(connectedPlayer->isMuted() ? "Unmute" : "Mute");
+
+    loopbutton.setButtonText(connectedPlayer->islooping() ? "Loop: On" : "Loop: Off");
+
+    toggleSegmentLoopButton.setButtonText(connectedPlayer->isSegmentLooping() ? "A-B Loop: On" : "A-B Loop: Off");
 }
 
 void PlayerGUI::updateLoopLabels()

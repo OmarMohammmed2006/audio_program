@@ -1,12 +1,18 @@
 #include "MainComponent.h"
+#include <BinaryData.h>
 
 MainComponent::MainComponent()
     : thumbnailCache(5),
-    thumbnail1(512, formatManager, thumbnailCache),
-    thumbnail2(512, formatManager, thumbnailCache),
-    activePlayer(&player1Audio)
+      thumbnail1(512, formatManager, thumbnailCache),
+      thumbnail2(512, formatManager, thumbnailCache),
+      activePlayer(&player1Audio)
 {
     formatManager.registerBasicFormats();
+
+    loadBackgroundImage();
+
+    setupWaveformDisplays();
+    setupControls();
 
     addAndMakeVisible(metadataLabel1);
     addAndMakeVisible(metadataLabel2);
@@ -18,217 +24,199 @@ MainComponent::MainComponent()
         label->setFont(juce::Font(12.0f));
     }
 
-    controls.connectToPlayer(activePlayer);
-
-    controls.setMixerCallback([this](bool enabled, float vol1, float vol2) {
-        mixerMode = enabled;
-        track1MixVolume = vol1;
-        track2MixVolume = vol2;
-        });
-
-    controls.setMixerPlayPauseCallback([this]() {
-        // Toggle play/pause for both tracks in mixer mode
-        bool anyPlaying = player1Audio.isPlaying() || player2Audio.isPlaying();
-
-        if (anyPlaying)
-        {
-            player1Audio.pause();
-            player2Audio.pause();
-        }
-        else
-        {
-            player1Audio.play();
-            player2Audio.play();
-        }
-        });
-
-    controls.setOnFileLoadedCallback([this](juce::File file) {
-        juce::String metadata;
-        if (track1Active)
-        {
-            thumbnail1.setSource(new juce::FileInputSource(file));
-            if (player1Audio.loadfile(file, metadata))
-            {
-                updateMetadataDisplay(metadata, 1);
-                lastLoadedFile1 = file;
-            }
-        }
-        else
-        {
-            thumbnail2.setSource(new juce::FileInputSource(file));
-            if (player2Audio.loadfile(file, metadata))
-            {
-                updateMetadataDisplay(metadata, 2);
-                lastLoadedFile2 = file;
-            }
-        }
-        });
-
     addAndMakeVisible(controls);
     setSize(1000, 700);
     setAudioChannels(0, 2);
     startTimer(33);
-    juce::Timer::callAfterDelay(500, [this]() {
-        loadSession();
-        });
+
+    juce::Timer::callAfterDelay(500, [this]() { loadPreviousSession(); });
 }
 
-MainComponent::~MainComponent()
+void MainComponent::loadBackgroundImage()
 {
-    saveSession();
-    shutdownAudio();
+    int dataSize = 0;
+    const char* imageData = BinaryData::getNamedResource("bg2_jpg", dataSize);
+
+    if (imageData != nullptr && dataSize > 0)
+    {
+        backgroundImage = juce::ImageCache::getFromMemory(imageData, dataSize);
+    }
+}
+
+void MainComponent::setupWaveformDisplays()
+{
+    waveform1 = std::make_unique<WaveformDisplay>(thumbnail1, player1Audio, "Track 1");
+    waveform2 = std::make_unique<WaveformDisplay>(thumbnail2, player2Audio, "Track 2");
+
+    waveform1->setActive(true);
+
+    waveform1->onWaveformClicked = [this]() {
+        if (!mixer.isEnabled())
+        {
+            switchToTrack(1);
+        }
+    };
+
+    waveform2->onWaveformClicked = [this]() {
+        if (!mixer.isEnabled())
+        {
+            switchToTrack(2);
+        }
+    };
+
+    addAndMakeVisible(waveform1.get());
+    addAndMakeVisible(waveform2.get());
+}
+
+void MainComponent::setupControls()
+{
+    controls.connectToPlayer(activePlayer);
+
+    controls.setMixerCallback([this](bool enabled, float vol1, float vol2) {
+        handleMixerChanged(enabled, vol1, vol2);
+    });
+
+    controls.setMixerPlayPauseCallback([this]() {
+        handleMixerPlayPause();
+    });
+
+    controls.setOnFileLoadedCallback([this](juce::File file) {
+        handleFileLoaded(file);
+    });
+}
+
+void MainComponent::handleFileLoaded(juce::File file)
+{
+    juce::String metadata;
+
+    if (track1Active)
+    {
+        thumbnail1.setSource(new juce::FileInputSource(file));
+        if (player1Audio.loadfile(file, metadata))
+        {
+            updateMetadataDisplay(metadata, 1);
+            lastLoadedFile1 = file;
+        }
+    }
+    else
+    {
+        thumbnail2.setSource(new juce::FileInputSource(file));
+        if (player2Audio.loadfile(file, metadata))
+        {
+            updateMetadataDisplay(metadata, 2);
+            lastLoadedFile2 = file;
+        }
+    }
+}
+
+void MainComponent::handleMixerChanged(bool enabled, float vol1, float vol2)
+{
+    mixer.setEnabled(enabled);
+    mixer.setTrack1Volume(vol1);
+    mixer.setTrack2Volume(vol2);
+
+    waveform1->setMixerMode(enabled);
+    waveform2->setMixerMode(enabled);
+}
+
+void MainComponent::handleMixerPlayPause()
+{
+    bool anyPlaying = player1Audio.isPlaying() || player2Audio.isPlaying();
+
+    if (anyPlaying)
+    {
+        player1Audio.pause();
+        player2Audio.pause();
+    }
+    else
+    {
+        player1Audio.play();
+        player2Audio.play();
+    }
+}
+
+void MainComponent::switchToTrack(int trackNumber)
+{
+    if (trackNumber == 1 && !track1Active)
+    {
+        bool wasPlaying = player2Audio.isPlaying();
+
+        if (player2Audio.isPlaying())
+            player2Audio.pause();
+
+        track1Active = true;
+        activePlayer = &player1Audio;
+        controls.connectToPlayer(activePlayer);
+
+        waveform1->setActive(true);
+        waveform2->setActive(false);
+
+        if (wasPlaying)
+            player1Audio.play();
+
+        repaint();
+    }
+    else if (trackNumber == 2 && track1Active)
+    {
+        bool wasPlaying = player1Audio.isPlaying();
+
+        if (player1Audio.isPlaying())
+            player1Audio.pause();
+
+        track1Active = false;
+        activePlayer = &player2Audio;
+        controls.connectToPlayer(activePlayer);
+
+        waveform1->setActive(false);
+        waveform2->setActive(true);
+
+        if (wasPlaying)
+            player2Audio.play();
+
+        repaint();
+    }
 }
 
 void MainComponent::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
 {
     player1Audio.prepareToPlay(samplesPerBlockExpected, sampleRate);
     player2Audio.prepareToPlay(samplesPerBlockExpected, sampleRate);
-    mixBuffer.setSize(2, samplesPerBlockExpected);
+    mixer.prepareToPlay(samplesPerBlockExpected, sampleRate);
 }
 
 void MainComponent::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill)
 {
     bufferToFill.clearActiveBufferRegion();
 
-    if (mixerMode)
+    if (mixer.isEnabled())
     {
-        // Mix both tracks
-        mixBuffer.clear();
-
-        juce::AudioSourceChannelInfo track1Info(&mixBuffer, 0, bufferToFill.numSamples);
-        juce::AudioSourceChannelInfo track2Info(bufferToFill.buffer, bufferToFill.startSample, bufferToFill.numSamples);
-
-        // Get track 1 audio
-        player1Audio.getNextAudioBlock(track1Info);
-
-        // Get track 2 audio directly into output buffer
-        player2Audio.getNextAudioBlock(track2Info);
-
-        // Mix track 1 into the output buffer with individual volumes
-        for (int channel = 0; channel < bufferToFill.buffer->getNumChannels(); ++channel)
-        {
-            auto* outputData = bufferToFill.buffer->getWritePointer(channel, bufferToFill.startSample);
-            auto* track1Data = mixBuffer.getReadPointer(juce::jmin(channel, mixBuffer.getNumChannels() - 1), 0);
-
-            for (int sample = 0; sample < bufferToFill.numSamples; ++sample)
-            {
-                outputData[sample] = (track1Data[sample] * track1MixVolume) +
-                    (outputData[sample] * track2MixVolume);
-            }
-        }
+        mixer.mixAudioBlock(bufferToFill, player1Audio, player2Audio);
     }
     else
     {
-        // Single track mode
-        if (track1Active) {
+        if (track1Active)
             player1Audio.getNextAudioBlock(bufferToFill);
-        }
-        else {
+        else
             player2Audio.getNextAudioBlock(bufferToFill);
-        }
     }
-}
-
-void MainComponent::releaseResources()
-{
-    player1Audio.releaseResources();
-    player2Audio.releaseResources();
 }
 
 void MainComponent::paint(juce::Graphics& g)
 {
-    juce::ColourGradient gradient(
-        juce::Colours::cyan,
-        0, 0,
-        juce::Colour(juce::Colours::darkblue),
-        0, getHeight(),
-        false
-    );
-    g.setGradientFill(gradient);
-    g.fillAll();
-
-    auto area = getLocalBounds();
-    auto waveformArea = area.removeFromTop(150);
-    auto track1Area = waveformArea.removeFromLeft(getWidth() / 2).reduced(10, 5);
-    auto track2Area = waveformArea.reduced(10, 5);
-
-    auto drawWaveform = [this, &g](juce::AudioThumbnail& thumbnail, PlayerAudio* player, juce::Rectangle<int> area, bool isActive, const juce::String& name) {
-        // Show both tracks as active in mixer mode
-        bool activeOrMixer = mixerMode || isActive;
-
-        g.setColour(activeOrMixer ? juce::Colours::blue.withAlpha(0.4f) : juce::Colours::black.withAlpha(0.3f));
-        g.fillRoundedRectangle(area.toFloat(), 8.0f);
-
-        if (mixerMode) {
-            g.setColour(juce::Colours::purple);
-        }
-        else {
-            g.setColour(isActive ? juce::Colours::yellow : juce::Colours::white.withAlpha(0.5f));
-        }
-        g.drawRoundedRectangle(area.toFloat(), 8.0f, 2.0f);
-
-        g.setColour(juce::Colours::white);
-        g.setFont(14.0f);
-        g.drawText(name, area.removeFromTop(20), juce::Justification::centred);
-
-        if (thumbnail.getTotalLength() > 0.0)
-        {
-            auto drawArea = area.reduced(5);
-
-            g.setColour(activeOrMixer ? juce::Colours::cyan : juce::Colours::lightblue.withAlpha(0.7f));
-            thumbnail.drawChannel(g, drawArea, 0.0, thumbnail.getTotalLength(), 0, 1.0f);
-
-            auto currentPos = player->getPosition();
-            if (thumbnail.getTotalLength() > 0.0)
-            {
-                auto playheadX = drawArea.getX() + (currentPos / thumbnail.getTotalLength()) * drawArea.getWidth();
-                g.setColour(juce::Colours::red);
-                g.drawLine(playheadX, drawArea.getY(), playheadX, drawArea.getBottom(), 2.0f);
-            }
-
-            if (player->getNumMarkers() > 0) {
-                drawWaveformMarkers(g, thumbnail, drawArea, player->getMarkers());
-            }
-
-            g.setColour(juce::Colours::white);
-            g.setFont(12.0f);
-
-            auto formatTime = [](double seconds) {
-                if (seconds < 0.0) seconds = 0.0;
-                int mins = static_cast<int>(seconds) / 60;
-                int secs = static_cast<int>(seconds) % 60;
-                return juce::String::formatted("%d:%02d", mins, secs);
-                };
-
-            g.drawText(formatTime(currentPos), drawArea, juce::Justification::bottomLeft);
-            g.drawText(formatTime(thumbnail.getTotalLength()), drawArea, juce::Justification::bottomRight);
-        }
-        else
-        {
-            g.setColour(juce::Colours::white.withAlpha(0.7f));
-            g.drawText("Click to load audio file", area, juce::Justification::centred);
-        }
-        this->drawLoopRegion(g, thumbnail, area, player);
-        };
-
-    drawWaveform(thumbnail1, &player1Audio, track1Area, track1Active, "Track 1");
-    drawWaveform(thumbnail2, &player2Audio, track2Area, track2Active, "Track 2");
-}
-
-void MainComponent::drawWaveformMarkers(juce::Graphics& g, juce::AudioThumbnail& thumbnail,
-    juce::Rectangle<int> area, const std::vector<std::pair<double, juce::String>>& markers)
-{
-    if (thumbnail.getTotalLength() <= 0.0) return;
-
-    for (const auto& marker : markers) {
-        double markerTime = marker.first;
-        float markerX = area.getX() + (markerTime / thumbnail.getTotalLength()) * area.getWidth();
-
-        g.setColour(juce::Colours::orange);
-        g.drawLine(markerX, area.getY(), markerX, area.getBottom(), 1.5f);
-
-        g.setColour(juce::Colours::yellow);
-        g.fillEllipse(markerX - 3, area.getBottom() - 6, 6, 6);
+    if (backgroundImage.isValid())
+    {
+        g.drawImage(backgroundImage, getLocalBounds().toFloat(),
+                   juce::RectanglePlacement::fillDestination);
+    }
+    else
+    {
+        juce::ColourGradient gradient(
+            juce::Colours::cyan, 0, 0,
+            juce::Colour(juce::Colours::darkblue), 0, getHeight(),
+            false
+        );
+        g.setGradientFill(gradient);
+        g.fillAll();
     }
 }
 
@@ -237,6 +225,11 @@ void MainComponent::resized()
     auto area = getLocalBounds();
 
     auto waveformArea = area.removeFromTop(150);
+    auto track1Area = waveformArea.removeFromLeft(getWidth() / 2).reduced(10, 5);
+    auto track2Area = waveformArea.reduced(10, 5);
+
+    waveform1->setBounds(track1Area);
+    waveform2->setBounds(track2Area);
 
     auto metadataArea = area.removeFromTop(80);
     auto track1MetadataArea = metadataArea.removeFromLeft(getWidth() / 2).reduced(10, 5);
@@ -251,284 +244,84 @@ void MainComponent::resized()
 void MainComponent::timerCallback()
 {
     repaint();
-    static int saveCounter = 0;
+
     if (++saveCounter >= 150)
     {
-        saveSession();
+        saveCurrentSession();
         saveCounter = 0;
     }
 }
 
-void MainComponent::mouseDown(const juce::MouseEvent& event)
+void MainComponent::saveCurrentSession()
 {
-    auto area = getLocalBounds();
-    auto waveformArea = area.removeFromTop(150);
-    auto track1Area = waveformArea.removeFromLeft(getWidth() / 2).reduced(10, 5);
-    auto track2Area = waveformArea.reduced(10, 5);
+    SessionData data;
+    data.file1 = lastLoadedFile1;
+    data.file2 = lastLoadedFile2;
+    data.position1 = player1Audio.getPosition();
+    data.position2 = player2Audio.getPosition();
+    data.wasPlaying1 = player1Audio.isPlaying();
+    data.wasPlaying2 = player2Audio.isPlaying();
+    data.activeTrack = track1Active ? 1 : 2;
 
-    if (track2Area.contains(event.getPosition()))
+    sessionManager.saveSession(data);
+}
+
+void MainComponent::loadPreviousSession()
+{
+    SessionData data = sessionManager.loadSession();
+
+    if (data.file1.existsAsFile())
     {
-        bool wasPlayingBeforeSwitch = track2Active ? player2Audio.isPlaying() : player1Audio.isPlaying();
-
-        if (!mixerMode && !track2Active)
+        juce::String metadata;
+        if (player1Audio.loadfile(data.file1, metadata))
         {
-            if (player1Audio.isPlaying())
-            {
-                player1Audio.pause();
-            }
-            track1Active = false;
-            track2Active = true;
-            activePlayer = &player2Audio;
-            controls.connectToPlayer(activePlayer);
-        }
+            thumbnail1.setSource(new juce::FileInputSource(data.file1));
+            updateMetadataDisplay(metadata, 1);
+            lastLoadedFile1 = data.file1;
+            player1Audio.setPosition(data.position1);
 
-        if (thumbnail2.getTotalLength() > 0.0)
-        {
-            auto drawArea = track2Area.reduced(5);
-            double clickPos = (event.getPosition().x - drawArea.getX()) / (double)drawArea.getWidth();
-            clickPos = juce::jlimit(0.0, 1.0, clickPos);
-            double newTime = clickPos * thumbnail2.getTotalLength();
-            player2Audio.setPosition(newTime);
-            if (event.mods.isRightButtonDown()) {
-                player2Audio.setLoopPoints(newTime, player2Audio.getLoopEnd());
-            }
-            else if (event.mods.isMiddleButtonDown()) {
-                player2Audio.setLoopPoints(player2Audio.getLoopStart(), newTime);
-            }
-
-            if (!mixerMode && wasPlayingBeforeSwitch)
-            {
-                player2Audio.play();
-            }
-            isDraggingPlayhead = true;
-            activeTrackDragging = 2;
-        }
-        repaint();
-    }
-    else if (track1Area.contains(event.getPosition()))
-    {
-        bool wasPlayingBeforeSwitch = track1Active ? player1Audio.isPlaying() : player2Audio.isPlaying();
-
-        if (!mixerMode && !track1Active)
-        {
-            if (player2Audio.isPlaying())
-            {
-                player2Audio.pause();
-            }
-            track1Active = true;
-            track2Active = false;
-            activePlayer = &player1Audio;
-            controls.connectToPlayer(activePlayer);
-        }
-
-        if (thumbnail1.getTotalLength() > 0.0)
-        {
-            auto drawArea = track1Area.reduced(5);
-            double clickPos = (event.getPosition().x - drawArea.getX()) / (double)drawArea.getWidth();
-            clickPos = juce::jlimit(0.0, 1.0, clickPos);
-            double newTime = clickPos * thumbnail1.getTotalLength();
-            player1Audio.setPosition(newTime);
-            if (event.mods.isRightButtonDown()) {
-                player1Audio.setLoopPoints(newTime, player1Audio.getLoopEnd());
-            }
-            else if (event.mods.isMiddleButtonDown()) {
-                player1Audio.setLoopPoints(player1Audio.getLoopStart(), newTime);
-            }
-            if (!mixerMode && wasPlayingBeforeSwitch)
-            {
+            if (data.wasPlaying1)
                 player1Audio.play();
-            }
-            isDraggingPlayhead = true;
-            activeTrackDragging = 1;
         }
-        repaint();
     }
-    saveSession();
-}
 
-void MainComponent::mouseDrag(const juce::MouseEvent& event)
-{
-    if (isDraggingPlayhead)
+    if (data.file2.existsAsFile())
     {
-        auto area = getLocalBounds();
-        auto waveformArea = area.removeFromTop(150);
-
-        if (activeTrackDragging == 1)
+        juce::String metadata;
+        if (player2Audio.loadfile(data.file2, metadata))
         {
-            auto track1Area = waveformArea.removeFromLeft(getWidth() / 2).reduced(10, 5);
-            auto drawArea = track1Area.reduced(5);
+            thumbnail2.setSource(new juce::FileInputSource(data.file2));
+            updateMetadataDisplay(metadata, 2);
+            lastLoadedFile2 = data.file2;
+            player2Audio.setPosition(data.position2);
 
-            if (thumbnail1.getTotalLength() > 0.0) {
-                double dragPos = (event.getPosition().x - drawArea.getX()) / (double)drawArea.getWidth();
-                dragPos = juce::jlimit(0.0, 1.0, dragPos);
-                double newTime = dragPos * thumbnail1.getTotalLength();
-                player1Audio.setPosition(newTime);
-                repaint();
-            }
-        }
-        else if (activeTrackDragging == 2)
-        {
-            auto track2Area = waveformArea.reduced(10, 5);
-            auto drawArea = track2Area.reduced(5);
-
-            if (thumbnail2.getTotalLength() > 0.0) {
-                double dragPos = (event.getPosition().x - drawArea.getX()) / (double)drawArea.getWidth();
-                dragPos = juce::jlimit(0.0, 1.0, dragPos);
-                double newTime = dragPos * thumbnail2.getTotalLength();
-                player2Audio.setPosition(newTime);
-                repaint();
-            }
+            if (data.wasPlaying2)
+                player2Audio.play();
         }
     }
-}
 
-void MainComponent::mouseUp(const juce::MouseEvent& event)
-{
-    isDraggingPlayhead = false;
-    activeTrackDragging = 0;
-    saveSession();
+    switchToTrack(data.activeTrack);
+    repaint();
 }
 
 void MainComponent::updateMetadataDisplay(const juce::String& metadata, int trackNumber)
 {
     if (trackNumber == 1)
-    {
         metadataLabel1.setText(metadata, juce::dontSendNotification);
-    }
     else if (trackNumber == 2)
-    {
         metadataLabel2.setText(metadata, juce::dontSendNotification);
-    }
+
     repaint();
 }
 
-void MainComponent::drawLoopRegion(juce::Graphics& g, juce::AudioThumbnail& thumbnail, juce::Rectangle<int> area, PlayerAudio* player)
+MainComponent::~MainComponent()
 {
-    if (player->isSegmentLooping() && thumbnail.getTotalLength() > 0.0)
-    {
-        auto drawArea = area.reduced(5);
-        double loopStart = player->getLoopStart();
-        double loopEnd = player->getLoopEnd();
-        double totalLength = thumbnail.getTotalLength();
-
-        float startX = drawArea.getX() + (loopStart / totalLength) * drawArea.getWidth();
-        float endX = drawArea.getX() + (loopEnd / totalLength) * drawArea.getWidth();
-
-        g.setColour(juce::Colours::green.withAlpha(0.2f));
-        g.fillRect(startX, (float)drawArea.getY(), endX - startX, (float)drawArea.getHeight());
-
-        g.setColour(juce::Colours::green);
-        g.drawLine(startX, drawArea.getY(), startX, drawArea.getBottom(), 2.0f);
-        g.drawLine(endX, drawArea.getY(), endX, drawArea.getBottom(), 2.0f);
-
-        g.setFont(juce::Font(10.0f, juce::Font::bold));
-        g.drawText("A", startX - 10, drawArea.getY() - 15, 20, 15, juce::Justification::centred);
-        g.drawText("B", endX - 10, drawArea.getY() - 15, 20, 15, juce::Justification::centred);
-    }
+    saveCurrentSession();
+    shutdownAudio();
 }
 
-juce::PropertiesFile* MainComponent::getSettingsFile()
+void MainComponent::releaseResources()
 {
-    juce::PropertiesFile::Options options;
-    options.applicationName = "AudioPlayer";
-    options.filenameSuffix = "settings";
-    options.osxLibrarySubFolder = "Application Support";
-    juce::File settingsFolder = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("AudioPlayer");
-    options.folderName = settingsFolder.getFullPathName();
-
-    return new juce::PropertiesFile(options);
-}
-
-void MainComponent::saveSession()
-{
-    std::unique_ptr<juce::PropertiesFile> settings(getSettingsFile());
-    lastPosition1 = player1Audio.getPosition();
-    lastPosition2 = player2Audio.getPosition();
-    wasPlaying1 = player1Audio.isPlaying();
-    wasPlaying2 = player2Audio.isPlaying();
-    lastActiveTrack = track1Active ? 1 : 2;
-    settings->setValue("lastFile1", lastLoadedFile1.getFullPathName());
-    settings->setValue("lastFile2", lastLoadedFile2.getFullPathName());
-    settings->setValue("lastPosition1", lastPosition1);
-    settings->setValue("lastPosition2", lastPosition2);
-    settings->setValue("wasPlaying1", wasPlaying1);
-    settings->setValue("wasPlaying2", wasPlaying2);
-    settings->setValue("lastActiveTrack", lastActiveTrack);
-    settings->save();
-}
-
-void MainComponent::loadSession()
-{
-    std::unique_ptr<juce::PropertiesFile> settings(getSettingsFile());
-
-    if (settings->getFile().existsAsFile())
-    {
-        juce::String filePath1 = settings->getValue("lastFile1");
-        juce::String filePath2 = settings->getValue("lastFile2");
-
-        lastPosition1 = settings->getDoubleValue("lastPosition1", 0.0);
-        lastPosition2 = settings->getDoubleValue("lastPosition2", 0.0);
-        wasPlaying1 = settings->getBoolValue("wasPlaying1", false);
-        wasPlaying2 = settings->getBoolValue("wasPlaying2", false);
-        lastActiveTrack = settings->getIntValue("lastActiveTrack", 1);
-
-        if (juce::File::isAbsolutePath(filePath1))
-        {
-            juce::File file1(filePath1);
-            if (file1.existsAsFile())
-            {
-                juce::String metadata;
-                if (player1Audio.loadfile(file1, metadata))
-                {
-                    thumbnail1.setSource(new juce::FileInputSource(file1));
-                    updateMetadataDisplay(metadata, 1);
-                    lastLoadedFile1 = file1;
-                    player1Audio.setPosition(lastPosition1);
-
-                    if (wasPlaying1)
-                    {
-                        player1Audio.play();
-                    }
-                }
-            }
-        }
-
-        if (juce::File::isAbsolutePath(filePath2))
-        {
-            juce::File file2(filePath2);
-            if (file2.existsAsFile())
-            {
-                juce::String metadata;
-                if (player2Audio.loadfile(file2, metadata))
-                {
-                    thumbnail2.setSource(new juce::FileInputSource(file2));
-                    updateMetadataDisplay(metadata, 2);
-                    lastLoadedFile2 = file2;
-                    player2Audio.setPosition(lastPosition2);
-
-                    if (wasPlaying2)
-                    {
-                        player2Audio.play();
-                    }
-                }
-            }
-        }
-
-        if (lastActiveTrack == 1 && track1Active != true)
-        {
-            track1Active = true;
-            track2Active = false;
-            activePlayer = &player1Audio;
-            controls.connectToPlayer(activePlayer);
-        }
-        else if (lastActiveTrack == 2 && track2Active != true)
-        {
-            track1Active = false;
-            track2Active = true;
-            activePlayer = &player2Audio;
-            controls.connectToPlayer(activePlayer);
-        }
-
-        repaint();
-    }
+    player1Audio.releaseResources();
+    player2Audio.releaseResources();
 }

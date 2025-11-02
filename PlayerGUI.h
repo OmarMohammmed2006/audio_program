@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "PlayerAudio.h"
+#include "PlaylistComponent.h"
 
 class ModernLookAndFeel : public juce::LookAndFeel_V4
 {
@@ -11,7 +12,6 @@ public:
         setColour(juce::TextButton::buttonOnColourId, juce::Colours::white.withAlpha(0.3f));
         setColour(juce::TextButton::textColourOnId, juce::Colours::white);
         setColour(juce::TextButton::textColourOffId, juce::Colours::white.withAlpha(0.9f));
-
         setColour(juce::Slider::trackColourId, juce::Colours::white.withAlpha(0.7f));
         setColour(juce::Slider::thumbColourId, juce::Colours::white);
         setColour(juce::Slider::backgroundColourId, juce::Colours::black.withAlpha(0.3f));
@@ -20,130 +20,19 @@ public:
     void drawButtonBackground(juce::Graphics& g, juce::Button& button,
         const juce::Colour& backgroundColour,
         bool shouldDrawButtonAsHighlighted,
-        bool shouldDrawButtonAsDown) override
-    {
-        auto bounds = button.getLocalBounds().toFloat().reduced(1.0f);
-        const float cornerSize = 12.0f;
-
-        juce::Colour baseColour = backgroundColour;
-
-        if (shouldDrawButtonAsDown)
-            baseColour = juce::Colours::white.withAlpha(0.4f);
-        else if (shouldDrawButtonAsHighlighted)
-            baseColour = juce::Colours::white.withAlpha(0.2f);
-
-        juce::ColourGradient gradient(
-            baseColour.brighter(shouldDrawButtonAsHighlighted ? 0.4f : 0.1f),
-            bounds.getX(), bounds.getY(),
-            baseColour.darker(0.1f),
-            bounds.getX(), bounds.getBottom(),
-            false
-        );
-
-        g.setGradientFill(gradient);
-        g.fillRoundedRectangle(bounds, cornerSize);
-
-        g.setColour(juce::Colours::white.withAlpha(0.6f));
-        g.drawRoundedRectangle(bounds, cornerSize, 1.5f);
-    }
+        bool shouldDrawButtonAsDown) override;
 
     void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
         float sliderPos, float minSliderPos, float maxSliderPos,
-        const juce::Slider::SliderStyle style, juce::Slider& slider) override
-    {
-        if (style == juce::Slider::LinearHorizontal)
-        {
-            auto trackHeight = 6.0f;
-            auto trackBounds = slider.getLocalBounds().toFloat().reduced(1.0f);
-            auto trackY = trackBounds.getCentreY() - trackHeight * 0.5f;
+        const juce::Slider::SliderStyle style, juce::Slider& slider) override;
 
-            g.setColour(juce::Colours::black.withAlpha(0.4f));
-            g.fillRoundedRectangle(trackBounds.getX(), trackY, trackBounds.getWidth(), trackHeight, trackHeight * 0.5f);
-
-            if (slider.isEnabled())
-            {
-                g.setColour(juce::Colours::white.withAlpha(0.8f));
-                g.fillRoundedRectangle(trackBounds.getX(), trackY, sliderPos - trackBounds.getX(), trackHeight, trackHeight * 0.5f);
-            }
-
-            auto thumbSize = 20.0f;
-            juce::Point<float> thumbPoint(sliderPos, trackBounds.getCentreY());
-
-            juce::ColourGradient thumbGradient(
-                juce::Colours::white.withAlpha(0.9f),
-                thumbPoint.x - thumbSize * 0.5f, thumbPoint.y - thumbSize * 0.5f,
-                juce::Colours::white.withAlpha(0.6f),
-                thumbPoint.x + thumbSize * 0.5f, thumbPoint.y + thumbSize * 0.5f,
-                false
-            );
-
-            g.setGradientFill(thumbGradient);
-            g.fillEllipse(juce::Rectangle<float>(thumbSize, thumbSize).withCentre(thumbPoint));
-
-            g.setColour(juce::Colours::white.withAlpha(0.8f));
-            g.drawEllipse(juce::Rectangle<float>(thumbSize, thumbSize).withCentre(thumbPoint), 1.5f);
-        }
-        else
-        {
-            LookAndFeel_V4::drawLinearSlider(g, x, y, width, height, sliderPos, minSliderPos, maxSliderPos, style, slider);
-        }
-    }
-
-    juce::Font getTextButtonFont(juce::TextButton&, int buttonHeight) override
-    {
-        return juce::Font(14.0f, juce::Font::bold);
-    }
-};
-
-class PlaylistComponent : public juce::Component,
-    public juce::TableListBoxModel,
-    public juce::Button::Listener,
-    public juce::TextEditor::Listener
-{
-public:
-    PlaylistComponent();
-    ~PlaylistComponent() override = default;
-
-    void resized() override;
-
-    int getNumRows() override;
-    void paintRowBackground(juce::Graphics& g, int rowNumber, int width, int height, bool rowIsSelected) override;
-    void paintCell(juce::Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected) override;
-    juce::Component* refreshComponentForCell(int rowNumber, int columnId, bool isRowSelected, Component* existingComponentToUpdate) override;
-
-    void buttonClicked(juce::Button* button) override;
-    void textEditorReturnKeyPressed(juce::TextEditor& editor) override;
-
-    void addFileToPlaylist(const juce::File& file);
-    void clearPlaylist();
-
-    std::function<void(juce::File)> onTrackLoadRequested;
-
-private:
-    struct PlaylistItem
-    {
-        juce::File file;
-        juce::String title;
-        juce::String duration;
-    };
-
-    juce::TableListBox table;
-    juce::TextEditor searchBox;
-    juce::TextButton addButton{ "+" };
-
-    std::vector<PlaylistItem> playlistItems;
-    std::vector<PlaylistItem> filteredItems;
-
-    std::unique_ptr<juce::FileChooser> fileChooser;
-
-    void updateFilter();
-    juce::String getDurationString(const juce::File& file);
+    juce::Font getTextButtonFont(juce::TextButton&, int buttonHeight) override;
 };
 
 class PlayerGUI : public juce::Component,
-    public juce::Button::Listener,
-    public juce::Slider::Listener,
-    public juce::ListBoxModel
+                  public juce::Button::Listener,
+                  public juce::Slider::Listener,
+                  public juce::ListBoxModel
 {
 public:
     PlayerGUI();
@@ -153,14 +42,14 @@ public:
     void paint(juce::Graphics& g) override;
 
     void connectToPlayer(PlayerAudio* player);
+    void refreshUI();
+
     void setOnFileLoadedCallback(std::function<void(juce::File)> callback) {
         onFileLoaded = callback;
     }
-
     void setMixerCallback(std::function<void(bool, float, float)> callback) {
         onMixerChanged = callback;
     }
-
     void setMixerPlayPauseCallback(std::function<void()> callback) {
         onMixerPlayPauseRequested = callback;
     }
@@ -169,7 +58,6 @@ public:
     void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
     void listBoxItemDoubleClicked(int row, const juce::MouseEvent&) override;
     void deleteKeyPressed(int lastRowSelected) override;
-    void updateMarkersList();
 
 private:
     PlayerAudio* connectedPlayer = nullptr;
@@ -179,27 +67,40 @@ private:
     juce::TextButton loadButton{ "Load Files" };
     juce::TextButton restartButton{ "Restart" };
     juce::TextButton playpauseButton{ "Play" };
-    juce::TextButton gotostartbutton{ "Go To Start" };
-    juce::TextButton gotoendbutton{ "Go To End" };
-    juce::TextButton mute_button{ "Mute" };
-    juce::TextButton loopbutton{ "Loop: off" };
     juce::TextButton skipBackButton{ "<<" };
     juce::TextButton skipForwardButton{ ">>" };
-    juce::TextButton setPointAButton{ "Set Point A" };
-    juce::TextButton setPointBButton{ "Set Point B" };
-    juce::TextButton clearLoopPointsButton{ "Clear A-B" };
-    juce::TextButton toggleSegmentLoopButton{ "A-B Loop: Off" };
 
+    juce::TextButton gotostartbutton{ "Go To Start" };
+    juce::TextButton gotoendbutton{ "Go To End" };
+
+    juce::TextButton mute_button{ "Mute" };
+    juce::TextButton loopbutton{ "Loop: off" };
+    juce::Slider volumeSlider;
+    juce::Label volumeLabel;
+
+    juce::Slider speedSlider;
+    juce::Label speedLabel;
     juce::TextButton speedHalfButton{ "0.5x" };
     juce::TextButton speedNormalButton{ "1.0x" };
     juce::TextButton speedDoubleButton{ "2.0x" };
     juce::TextButton speedQuadButton{ "4.0x" };
+
+    juce::TextButton setPointAButton{ "Set Point A" };
+    juce::TextButton setPointBButton{ "Set Point B" };
+    juce::TextButton clearLoopPointsButton{ "Clear A-B" };
+    juce::TextButton toggleSegmentLoopButton{ "A-B Loop: Off" };
+    juce::Label loopStartLabel;
+    juce::Label loopEndLabel;
+
     juce::TextButton fadeInButton{ "Fade In" };
     juce::TextButton fadeOutButton{ "Fade Out" };
     juce::TextButton removeFadesButton{ "Remove Fades" };
     juce::Label fadeStatusLabel;
 
-    // Mixer controls
+    juce::TextButton addMarkerButton{ "Add Marker" };
+    juce::TextButton clearMarkersButton{ "Clear Markers" };
+    juce::ListBox markersList;
+
     juce::TextButton mixerToggleButton{ "Mixer: Off" };
     juce::Slider track1MixSlider;
     juce::Slider track2MixSlider;
@@ -207,28 +108,24 @@ private:
     juce::Label track2MixLabel;
     bool mixerEnabled = false;
 
-    juce::Slider volumeSlider;
-    juce::Slider speedSlider;
-    juce::Label volumeLabel;
-    juce::Label speedLabel;
-    juce::Label loopStartLabel;
-    juce::Label loopEndLabel;
-
     std::unique_ptr<juce::FileChooser> fileChooser;
+
     std::function<void(juce::File)> onFileLoaded;
     std::function<void(bool, float, float)> onMixerChanged;
     std::function<void()> onMixerPlayPauseRequested;
-    juce::ListBox markersList;
-
-    juce::TextButton addMarkerButton{ "Add Marker" };
-    juce::TextButton clearMarkersButton{ "Clear Markers" };
 
     void buttonClicked(juce::Button* button) override;
     void sliderValueChanged(juce::Slider* slider) override;
+
     void updatePlayPauseButton();
     void updateLoopLabels();
     void updateFadeStatus();
     void updateMixerControls();
+    void updateMarkersList();
+
+    void setupButtons();
+    void setupSliders();
+    void setupLabels();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerGUI)
 };
