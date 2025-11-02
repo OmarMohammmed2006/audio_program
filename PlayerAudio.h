@@ -43,6 +43,13 @@ public:
 	bool hasFadeInApplied() const { return hasFadeIn; }
 	bool hasFadeOutApplied() const { return hasFadeOut; }
 
+	void addMarker(double time, const juce::String& name = "");
+	void removeMarker(int index);
+	void removeAllMarkers();
+	void jumpToMarker(int index);
+	std::vector<std::pair<double, juce::String>> getMarkers() const { return markers; }
+	int getNumMarkers() const { return markers.size(); }
+
 
 private:
 	juce::AudioFormatManager formatManager;
@@ -66,6 +73,7 @@ private:
 	double fadeOutDuration = 0.0;
 	double calculateFadeGain(double currentTime);
 
+	std::vector<std::pair<double, juce::String>> markers;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerAudio)
 };

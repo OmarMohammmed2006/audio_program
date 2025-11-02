@@ -219,3 +219,37 @@ double PlayerAudio::calculateFadeGain(double currentTime)
 
     return juce::jlimit(0.0f, 1.0f, static_cast<float>(gain));
 }
+
+void PlayerAudio::addMarker(double time, const juce::String& name)
+{
+    time = juce::jlimit(0.0, getLength(), time);
+
+    juce::String markerName = name;
+    if (markerName.isEmpty()) {
+        markerName = "Marker " + juce::String(markers.size() + 1);
+    }
+
+    markers.emplace_back(time, markerName);
+
+    std::sort(markers.begin(), markers.end(),
+              [](const auto& a, const auto& b) { return a.first < b.first; });
+}
+
+void PlayerAudio::removeMarker(int index)
+{
+    if (index >= 0 && index < markers.size()) {
+        markers.erase(markers.begin() + index);
+    }
+}
+
+void PlayerAudio::removeAllMarkers()
+{
+    markers.clear();
+}
+
+void PlayerAudio::jumpToMarker(int index)
+{
+    if (index >= 0 && index < markers.size()) {
+        setPosition(markers[index].first);
+    }
+}

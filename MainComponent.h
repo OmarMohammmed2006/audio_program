@@ -21,13 +21,6 @@ public:
     void mouseDrag(const juce::MouseEvent& event) override;
     void mouseUp(const juce::MouseEvent& event) override;
 
-    void loadPlaylistFile(const juce::File& file);
-    void playNextInPlaylist();
-    void playPreviousInPlaylist();
-
-    juce::Array<juce::File> playlist;
-    int currentPlaylistIndex = -1;
-
 private:
     PlayerAudio player1Audio;
     PlayerAudio player2Audio;
@@ -48,6 +41,7 @@ private:
 
     void updateMetadataDisplay(const juce::String& metadata, int trackNumber);
     void drawLoopRegion(juce::Graphics& g, juce::AudioThumbnail& thumbnail, juce::Rectangle<int> area, PlayerAudio* player);
+    void drawWaveformMarkers(juce::Graphics& g, juce::AudioThumbnail& thumbnail, juce::Rectangle<int> area, const std::vector<std::pair<double, juce::String>>& markers);
     void saveSession();
     void loadSession();
     juce::PropertiesFile* getSettingsFile();

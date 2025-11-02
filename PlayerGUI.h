@@ -95,28 +95,80 @@ public:
     }
 };
 
+class PlaylistComponent : public juce::Component,
+                         public juce::TableListBoxModel,
+                         public juce::Button::Listener,
+                         public juce::TextEditor::Listener
+{
+public:
+    PlaylistComponent();
+    ~PlaylistComponent() override = default;
+
+    void resized() override;
+
+    int getNumRows() override;
+    void paintRowBackground(juce::Graphics& g, int rowNumber, int width, int height, bool rowIsSelected) override;
+    void paintCell(juce::Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected) override;
+    juce::Component* refreshComponentForCell(int rowNumber, int columnId, bool isRowSelected, Component* existingComponentToUpdate) override;
+
+    void buttonClicked(juce::Button* button) override;
+    void textEditorReturnKeyPressed(juce::TextEditor& editor) override;
+
+    void addFileToPlaylist(const juce::File& file);
+    void clearPlaylist();
+
+    std::function<void(juce::File)> onTrackLoadRequested;
+
+private:
+    struct PlaylistItem
+    {
+        juce::File file;
+        juce::String title;
+        juce::String duration;
+    };
+
+    juce::TableListBox table;
+    juce::TextEditor searchBox;
+    juce::TextButton addButton{"+"};
+
+    std::vector<PlaylistItem> playlistItems;
+    std::vector<PlaylistItem> filteredItems;
+
+    std::unique_ptr<juce::FileChooser> fileChooser;
+
+    void updateFilter();
+    juce::String getDurationString(const juce::File& file);
+};
+
 class PlayerGUI : public juce::Component,
     public juce::Button::Listener,
-    public juce::Slider::Listener
+    public juce::Slider::Listener,
+    public juce::ListBoxModel
 {
 public:
     PlayerGUI();
     ~PlayerGUI() override;
 
     void resized() override;
+    void paint(juce::Graphics& g) override;
 
     void connectToPlayer(PlayerAudio* player);
     void setOnFileLoadedCallback(std::function<void(juce::File)> callback) {
         onFileLoaded = callback;
     }
 
+    int getNumRows() override;
+    void paintListBoxItem(int rowNumber, juce::Graphics& g,int width, int height, bool rowIsSelected) override;
+    void listBoxItemDoubleClicked(int row, const juce::MouseEvent&) override;
+    void deleteKeyPressed(int lastRowSelected) override;
+    void updateMarkersList();
+
 private:
     PlayerAudio* connectedPlayer = nullptr;
     ModernLookAndFeel customLookAndFeel;
+    std::unique_ptr<PlaylistComponent> playlist;
 
     juce::TextButton loadButton{ "Load Files" };
-    juce::TextButton nextButton{ "Next" };
-    juce::TextButton previousButton{ "Previous" };
     juce::TextButton restartButton{ "Restart" };
     juce::TextButton playpauseButton{ "Play" };
     juce::TextButton gotostartbutton{ "Go To Start" };
@@ -146,9 +198,12 @@ private:
     juce::Label loopStartLabel;
     juce::Label loopEndLabel;
 
-
     std::unique_ptr<juce::FileChooser> fileChooser;
     std::function<void(juce::File)> onFileLoaded;
+    juce::ListBox markersList;
+
+    juce::TextButton addMarkerButton{ "Add Marker" };
+    juce::TextButton clearMarkersButton{ "Clear Markers" };
 
     void buttonClicked(juce::Button* button) override;
     void sliderValueChanged(juce::Slider* slider) override;
