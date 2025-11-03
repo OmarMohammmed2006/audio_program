@@ -211,8 +211,8 @@ void MainComponent::paint(juce::Graphics& g)
     else
     {
         juce::ColourGradient gradient(
-            juce::Colours::cyan, 0, 0,
-            juce::Colour(juce::Colours::darkblue), 0, getHeight(),
+            juce::Colours::blue, 0, 0,
+            juce::Colours::black, 0, getHeight(),
             false
         );
         g.setGradientFill(gradient);
