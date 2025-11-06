@@ -1,0 +1,24 @@
+1. Open PowerShell:
+	cd C:\Users\h0610\source\repos
+	git clone https://github.com/microsoft/vcpkg.git
+	cd vcpkg
+	.\bootstrap-vcpkg.bat
+
+
+2. Install TagLib (64-bit example):
+	.\vcpkg.exe install taglib:x64-windows
+
+
+3. Integrate vcpkg so CMake finds packages automatically:
+	.\vcpkg.exe integrate install
+
+
+4. Open a terminal and go to a parent folder that contains your repo:
+	cd (YOUR PATH)
+	ls   # you should see Audio-Program and other projects 
+
+
+5. Clone TagLib into a new folder (this will not touch your existing repo):
+	git clone https://github.com/taglib/taglib.git
+
+6. DON'T FORGET TO CHANGE THE PATH OF JUCE IN THE CMakeList.txt TO YOU ACTUAL PATH

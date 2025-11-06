@@ -41,6 +41,4 @@ private:
     std::unique_ptr<MainWindow> mainWindow;
 };
 
-START_JUCE_APPLICATION(SimpleAudioPlayer)\
-
-//testing github
+START_JUCE_APPLICATION(SimpleAudioPlayer)

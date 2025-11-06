@@ -1,4 +1,7 @@
 #include "PlayerAudio.h"
+#include <taglib/fileref.h>
+#include <taglib/tag.h>
+
 
 PlayerAudio::PlayerAudio()
     : resamplerSource(&transportSource, false)
@@ -71,22 +74,24 @@ bool PlayerAudio::loadfile(const juce::File& file, juce::String& metadata)
     transportSource.setSource(readerSource.get(), 0, nullptr, reader->sampleRate);
     setSpeed(1.0f);
 
-    juce::StringArray metadataLines;
-    auto& metadataValues = reader->metadataValues;
+    // Read metadata with TagLib
+    TagLib::FileRef audioFile(file.getFullPathName().toRawUTF8());
 
-    metadataLines.add("File: " + file.getFileName());
-    metadataLines.add("Duration: " + juce::String(transportSource.getLengthInSeconds(), 1) + " seconds");
+    juce::String title = "Unknown";
+    juce::String artist = "Unknown";
+    juce::String album = "Unknown";
 
-    static const juce::String emptyString;
-    const juce::String title = metadataValues.getValue("title", emptyString);
-    const juce::String artist = metadataValues.getValue("artist", emptyString);
-    const juce::String album = metadataValues.getValue("album", emptyString);
+    if (!audioFile.isNull() && audioFile.tag())
+    {
+        TagLib::Tag *tag = audioFile.tag();
+        title = juce::String(tag->title().toCString(true));
+        artist = juce::String(tag->artist().toCString(true));
+        album = juce::String(tag->album().toCString(true));
+    }
 
-    if (!title.isEmpty()) metadataLines.add("Title: " + title);
-    if (!artist.isEmpty()) metadataLines.add("Artist: " + artist);
-    if (!album.isEmpty()) metadataLines.add("Album: " + album);
-
-    metadata = metadataLines.joinIntoString("\n");
+    metadata = "Title: " + title + "\n" +
+               "Artist: " + artist + "\n" +
+               "Album: " + album;
     return true;
 }
 
