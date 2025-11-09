@@ -16,7 +16,9 @@ void AudioMixer::mixAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill,
     mixBuffer.clear();
     
     juce::AudioSourceChannelInfo track1Info(&mixBuffer, 0, bufferToFill.numSamples);
-    juce::AudioSourceChannelInfo track2Info(bufferToFill.buffer, bufferToFill.startSample, bufferToFill.numSamples);
+    juce::AudioSourceChannelInfo track2Info(bufferToFill.buffer, 
+                                            bufferToFill.startSample, 
+                                            bufferToFill.numSamples);
     
     player1.getNextAudioBlock(track1Info);
     player2.getNextAudioBlock(track2Info);
@@ -39,7 +41,6 @@ void AudioMixer::setEnabled(bool shouldBeEnabled)
 {
     enabled = shouldBeEnabled;
 }
-// setter function that changes the state of our private member 'enabled'
 
 void AudioMixer::setTrack1Volume(float volume)
 {

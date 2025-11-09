@@ -193,5 +193,20 @@ void PlaylistComponent::updateFilter()
 
 juce::String PlaylistComponent::getDurationString(const juce::File& file)
 {
+    juce::AudioFormatManager formatManager;
+    formatManager.registerBasicFormats();
+
+    std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(file));
+
+    if (reader != nullptr)
+    {
+        double lengthInSeconds = reader->lengthInSamples / reader->sampleRate;
+
+        int minutes = static_cast<int>(lengthInSeconds) / 60;
+        int seconds = static_cast<int>(lengthInSeconds) % 60;
+
+        return juce::String::formatted("%d:%02d", minutes, seconds);
+    }
+
     return "0:00";
 }
