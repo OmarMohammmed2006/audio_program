@@ -129,9 +129,9 @@ void WaveformDisplay::mouseDown(const juce::MouseEvent& event)
     if (thumbnail.getTotalLength() <= 0.0) return;
     
     auto area = getLocalBounds().reduced(10, 25);
-    double clickTime = getTimeFromX(event.getPosition().x, area);
+    double clickTime = getTimeFromX(event.getPosition().x, area); // gets time from the x-axis we clicked on
     
-    audioPlayer.setPosition(clickTime);
+    audioPlayer.setPosition(clickTime); // sets our track to that time
     
     if (event.mods.isRightButtonDown())
     {

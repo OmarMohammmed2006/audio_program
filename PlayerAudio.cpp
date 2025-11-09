@@ -74,7 +74,6 @@ bool PlayerAudio::loadfile(const juce::File& file, juce::String& metadata)
     transportSource.setSource(readerSource.get(), 0, nullptr, reader->sampleRate);
     setSpeed(1.0f);
 
-    // Read metadata with TagLib
     TagLib::FileRef audioFile(file.getFullPathName().toRawUTF8());
 
     juce::String title = "Unknown";

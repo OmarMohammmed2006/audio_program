@@ -1,20 +1,20 @@
 #include "MainComponent.h"
 #include <BinaryData.h>
 
-MainComponent::MainComponent()
+MainComponent::MainComponent() // --> initializes some class members before constructor
     : thumbnailCache(5),
-      thumbnail1(512, formatManager, thumbnailCache),
-      thumbnail2(512, formatManager, thumbnailCache),
-      activePlayer(&player1Audio)
+      thumbnail1(512, formatManager, thumbnailCache), // track 1 thumbnail --> waveform
+      thumbnail2(512, formatManager, thumbnailCache), // track 2 thumbnail --> waveform
+      activePlayer(&player1Audio) // initializes the pointer to take the address of the first track player
 {
     formatManager.registerBasicFormats();
 
-    loadBackgroundImage();
+    loadBackgroundImage(); // calls the member function in constructor so it runs when the object is initialized
 
-    setupWaveformDisplays();
-    setupControls();
+    setupWaveformDisplays(); // same here but for waveformdisplay
+    setupControls(); // same but for controls
 
-    addAndMakeVisible(metadataLabel1);
+    addAndMakeVisible(metadataLabel1); // a method from the component class used to show metadata
     addAndMakeVisible(metadataLabel2);
 
     for (auto* label : { &metadataLabel1, &metadataLabel2 })
@@ -22,14 +22,15 @@ MainComponent::MainComponent()
         label->setColour(juce::Label::textColourId, juce::Colours::white);
         label->setJustificationType(juce::Justification::topLeft);
         label->setFont(juce::Font(12.0f));
-    }
+    } // the font and the color of the metadata
 
-    addAndMakeVisible(controls);
-    setSize(1000, 700);
-    setAudioChannels(0, 2);
-    startTimer(33);
+    addAndMakeVisible(controls); // shows the main controls in the gui
+    setSize(1000, 1000); // sets initial window size
+    setAudioChannels(0, 2); // configures the audio system, 0 as input and 2 as output for stereo
+    startTimer(33); // a timer that is later used in session update and repaint
 
     juce::Timer::callAfterDelay(500, [this]() { loadPreviousSession(); });
+    // waits 500 seconds then loads the last session; it calls a lambda function
 }
 
 void MainComponent::loadBackgroundImage()
@@ -47,8 +48,10 @@ void MainComponent::setupWaveformDisplays()
 {
     waveform1 = std::make_unique<WaveformDisplay>(thumbnail1, player1Audio, "Track 1");
     waveform2 = std::make_unique<WaveformDisplay>(thumbnail2, player2Audio, "Track 2");
+    // now we pass the args we didn't have later so we used the unique pointers
 
     waveform1->setActive(true);
+    // activates the waveform and draws it
 
     waveform1->onWaveformClicked = [this]() {
         if (!mixer.isEnabled())
@@ -56,6 +59,7 @@ void MainComponent::setupWaveformDisplays()
             switchToTrack(1);
         }
     };
+    // here if waveform1 is clicked, and we aren't in mixer mode it shifts current track to 1
 
     waveform2->onWaveformClicked = [this]() {
         if (!mixer.isEnabled())
@@ -63,18 +67,23 @@ void MainComponent::setupWaveformDisplays()
             switchToTrack(2);
         }
     };
+    // same here but for waveform2
 
     addAndMakeVisible(waveform1.get());
     addAndMakeVisible(waveform2.get());
+    // shows both waveforms
 }
 
 void MainComponent::setupControls()
 {
     controls.connectToPlayer(activePlayer);
+    // loads the current played track
 
     controls.setMixerCallback([this](bool enabled, float vol1, float vol2) {
         handleMixerChanged(enabled, vol1, vol2);
     });
+    // if in mixer mode it sets the volume of track1 and track2
+    // the 'this' in the lambda function shows the compiler which object to act on "act on this object"
 
     controls.setMixerPlayPauseCallback([this]() {
         handleMixerPlayPause();
@@ -91,11 +100,11 @@ void MainComponent::handleFileLoaded(juce::File file)
 
     if (track1Active)
     {
-        thumbnail1.setSource(new juce::FileInputSource(file));
+        thumbnail1.setSource(new juce::FileInputSource(file)); // sets thumbnail1 into the loaded audio to extract it's waveform
         if (player1Audio.loadfile(file, metadata))
         {
-            updateMetadataDisplay(metadata, 1);
-            lastLoadedFile1 = file;
+            updateMetadataDisplay(metadata, 1); // updates with new metadata
+            lastLoadedFile1 = file; // updates the current loaded file in track1
         }
     }
     else
@@ -111,12 +120,13 @@ void MainComponent::handleFileLoaded(juce::File file)
 
 void MainComponent::handleMixerChanged(bool enabled, float vol1, float vol2)
 {
-    mixer.setEnabled(enabled);
-    mixer.setTrack1Volume(vol1);
+    mixer.setEnabled(enabled); // changes the mixer settings to enable it and turn into mixer mode
+    mixer.setTrack1Volume(vol1); // sets vol1 of track1
     mixer.setTrack2Volume(vol2);
 
     waveform1->setMixerMode(enabled);
     waveform2->setMixerMode(enabled);
+    // to change the shape of the waveform
 }
 
 void MainComponent::handleMixerPlayPause()
@@ -177,12 +187,16 @@ void MainComponent::switchToTrack(int trackNumber)
     }
 }
 
-void MainComponent::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
+void MainComponent::prepareToPlay(int samplesPerBlockExpected, double sampleRate) // overrode function from parent
 {
-    player1Audio.prepareToPlay(samplesPerBlockExpected, sampleRate);
+    player1Audio.prepareToPlay(samplesPerBlockExpected, sampleRate); // parent method
     player2Audio.prepareToPlay(samplesPerBlockExpected, sampleRate);
     mixer.prepareToPlay(samplesPerBlockExpected, sampleRate);
 }
+/*
+here the 3 objects call the method from juice library called prepareToPlay() and
+we override that function to just make the parent function run on these objects
+*/
 
 void MainComponent::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill)
 {
@@ -251,6 +265,7 @@ void MainComponent::timerCallback()
         saveCounter = 0;
     }
 }
+// timer used for session and repainting the GUI
 
 void MainComponent::saveCurrentSession()
 {
@@ -265,6 +280,7 @@ void MainComponent::saveCurrentSession()
 
     sessionManager.saveSession(data);
 }
+
 
 void MainComponent::loadPreviousSession()
 {

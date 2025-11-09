@@ -13,7 +13,7 @@ public:
     void mouseUp(const juce::MouseEvent& event) override;
     
     void setActive(bool shouldBeActive);
-    void setMixerMode(bool isInMixerMode);
+    void setMixerMode(bool isInMixerMode); // checks if we are in mixer mode
     bool isActive() const { return active; }
     
     std::function<void()> onWaveformClicked;
